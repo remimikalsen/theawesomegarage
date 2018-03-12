@@ -1,0 +1,6 @@
+Starts up on boot:
+ - sudo vi /etc/rc.local
+
+Check config in config.ini
+
+
