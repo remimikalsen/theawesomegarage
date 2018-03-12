@@ -10,7 +10,7 @@ from email import encoders
 # Send emails with and without attachments using your gmail account
 class GarageMail:
     def __init__(self, account, password, sender):
-        self.username = account
+        self.account = account
         self.password = password
         self.sender = sender
     

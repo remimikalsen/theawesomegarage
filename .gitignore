@@ -1,3 +1,5 @@
 config.*
 *.pyc
 *.log
+*.jpg
+
