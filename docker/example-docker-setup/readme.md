@@ -80,3 +80,21 @@ It is recommended to set up the Backup container to to take care of automatic re
 
 ## Restore
 In order to restore do all installation first. Then stop all containers. Retrieve the backup and replace the new volumes with old data. Check permissions.
+
+## Known problems
+## No DNS resolution on Ubuntu 18.04 OpenVPN client
+If you are able to ping an IP-address, but not the corresponding Domain name, you fall into this category.
+OpenVPN can't by itself fix DNS-issues on Ubuntu 18.04 clients. You need to take additional steps. This is one way of fixing it:
+- On the client, run:
+-- sudo mkdir -p /etc/openvpn/scripts
+-- sudo wget https://raw.githubusercontent.com/jonathanio/update-systemd-resolved/master/update-systemd-resolved -P /etc/openvpn/scripts/
+-- sudo chmod +x /etc/openvpn/scripts/update-systemd-resolved
+
+Then, change change your client's ovpn-file and append the following to the bottom:
+script-security 2
+up /etc/openvpn/scripts/update-systemd-resolved
+down /etc/openvpn/scripts/update-systemd-resolved
+
+Note! If you already have a script-security section, place up and down in that section
+Note2! If you already have up and down definitions, comment the old ones out and use the aforementioned definitions.
+

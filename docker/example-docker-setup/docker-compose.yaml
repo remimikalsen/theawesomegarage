@@ -293,7 +293,7 @@ services:
     # tty=true just to get it running
     tty: true
     volumes:
-       - ${DOCKER_VOLUMES}/${COMPOSE_PROJECT_NAME}_owncloud-files:/data/:ro
+       - ${PATH_TO_FILES_TO_BACK_UP}:/data/:ro
     environment:
       - CRON_TASK_1=${SYNOLOGY_CRON_TASK_1}
 
