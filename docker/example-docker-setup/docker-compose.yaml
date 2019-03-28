@@ -1,0 +1,299 @@
+version: '3.5'
+
+networks:
+  frontend:
+    name: frontend
+  backend:
+    name: backend
+  agents:
+    name: agents
+  default:
+    name: frontend
+
+volumes:
+  owncloud-files:
+    driver: local
+  owncloud-mysql:
+    driver: local
+  owncloud-mysql-backup:
+    driver: local
+  owncloud-redis:
+    driver: local
+  nginx-conf:
+    driver: local
+  nginx-logs:
+    driver: local
+  nginx-certs:
+    driver: local
+  nginx-vhost:
+    driver: local
+  nginx-html:
+    driver: local
+  portainer-data:
+    driver: local
+
+services:
+
+  owncloud:
+    container_name: owncloud
+    image: owncloud/server:${OWNCLOUD_VERSION}
+    restart: always
+    expose: 
+      - "8080"
+    depends_on:
+      - owncloud-db
+      - owncloud-redis
+    environment:
+      - VIRTUAL_HOST=${OWNCLOUD_DOMAIN}
+      - VIRTUAL_PORT=8080
+      - VIRTUAL_PROTO=http
+      - LETSENCRYPT_HOST=${OWNCLOUD_DOMAIN}
+      - LETSENCRYPT_EMAIL=${LETSENCRYPT_EMAIL}
+      - OWNCLOUD_DOMAIN=${OWNCLOUD_DOMAIN}
+      - OWNCLOUD_DB_TYPE=mysql
+      - OWNCLOUD_DB_NAME=owncloud
+      - OWNCLOUD_DB_USERNAME=owncloud
+      - OWNCLOUD_DB_PASSWORD=owncloud
+      - OWNCLOUD_DB_HOST=owncloud-db
+      - OWNCLOUD_ADMIN_USERNAME=${ADMIN_USERNAME}
+      - OWNCLOUD_ADMIN_PASSWORD=${ADMIN_PASSWORD}
+      - OWNCLOUD_MYSQL_UTF8MB4=true
+      - OWNCLOUD_REDIS_ENABLED=true
+      - OWNCLOUD_REDIS_HOST=owncloud-redis
+    healthcheck:
+      test: ["CMD", "curl", "-f", "https://${OWNCLOUD_DOMAIN}"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    networks:
+      - frontend
+      - backend
+    volumes:
+      - owncloud-files:/mnt/data
+
+  owncloud-db:
+    container_name: owncloud-db
+    image: webhippie/mariadb:latest
+    restart: always
+    environment:
+      - MARIADB_ROOT_PASSWORD=owncloud
+      - MARIADB_USERNAME=owncloud
+      - MARIADB_PASSWORD=owncloud
+      - MARIADB_DATABASE=owncloud
+      - MARIADB_MAX_ALLOWED_PACKET=128M
+      - MARIADB_INNODB_LOG_FILE_SIZE=64M
+    healthcheck:
+      test: ["CMD", "/usr/bin/healthcheck"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    networks:
+      - backend
+    volumes:
+      - owncloud-mysql:/var/lib/mysql
+      - owncloud-mysql-backup:/var/lib/backup
+
+  owncloud-redis:
+    container_name: owncloud-redis
+    image: webhippie/redis:latest
+    restart: always
+    environment:
+      - REDIS_DATABASES=1
+    sysctls: 
+      net.core.somaxconn: 511
+      # see readme.md
+    healthcheck:
+      test: ["CMD", "/usr/bin/healthcheck"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    networks:
+      - backend
+    volumes:
+      - owncloud-redis:/var/lib/redis
+
+  simple-apache-php:
+    container_name: simple-apache-php
+    build: ./simple-apache-php/.
+    restart: always
+    expose:
+      - "80"
+    environment:
+      - VIRTUAL_HOST=${SIMPLE_APACHE_PHP_DOMAIN}
+      - VIRTUAL_PORT=80
+      - VIRTUAL_PROTO=http
+      - LETSENCRYPT_HOST=${SIMPLE_APACHE_PHP_DOMAIN}
+      - LETSENCRYPT_EMAIL=${LETSENCRYPT_EMAIL}
+    healthcheck:
+      test: ["CMD", "curl", "-f", "https://${SIMPLE_APACHE_PHP_DOMAIN}"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    networks:
+      - frontend
+    volumes:
+      - ${MY_DOCKER_DATA_DIR}/simple-apache-php/src:/var/www/html
+
+  nginx:
+    container_name: nginx
+    image: nginx:latest
+    healthcheck:
+      test: ['CMD', '/bin/healthcheck.sh']
+      interval: 1m
+      timeout: 5s
+      retries: 3
+    volumes:
+      - nginx-conf:/etc/nginx/conf.d
+      - nginx-vhost:/etc/nginx/vhost.d
+      - nginx-html:/usr/share/nginx/html
+      - nginx-certs:/etc/nginx/certs:ro
+      - nginx-logs:/var/log/nginx
+      - ${MY_DOCKER_DATA_DIR}/nginx/healthcheck.sh:/bin/healthcheck.sh 
+    ports:
+      - 80:80
+      - 443:443
+    networks:
+      - frontend
+
+  nginx-gen:
+    container_name: nginx-gen
+    image: jwilder/docker-gen
+    depends_on:
+      - nginx
+      - owncloud
+      - simple-apache-php
+      - portainer
+    entrypoint: /bin/sh -c
+    command: ["/usr/local/bin/docker-gen -notify-sighup nginx -watch -wait 30s:60s /etc/docker-gen/templates/nginx.tmpl /etc/nginx/conf.d/default.conf"]
+    networks:
+      - frontend
+    volumes:
+      - nginx-conf:/etc/nginx/conf.d
+      - nginx-vhost:/etc/nginx/vhost.d
+      - nginx-html:/usr/share/nginx/html
+      - nginx-certs:/etc/nginx/certs:ro
+      - /var/run/docker.sock:/tmp/docker.sock:ro
+      - ${MY_DOCKER_DATA_DIR}/nginx-gen/templates/nginx.tmpl:/etc/docker-gen/templates/nginx.tmpl:ro
+
+  nginx-ssl:
+    container_name: nginx-ssl
+    image: jrcs/letsencrypt-nginx-proxy-companion
+    depends_on:
+      - nginx-gen
+    environment:
+      - NGINX_PROXY_CONTAINER=nginx
+      - NGINX_DOCKER_GEN_CONTAINER=nginx-gen
+      #- ACME_CA_URI=https://acme-staging.api.letsencrypt.org/directory
+      #- DEBUG=true
+    networks:
+      - frontend
+    volumes:
+      - nginx-conf:/etc/nginx/conf.d
+      - nginx-vhost:/etc/nginx/vhost.d
+      - nginx-html:/usr/share/nginx/html
+      - nginx-certs:/etc/nginx/certs:rw
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+
+  portainer:
+    container_name: portainer
+    image: portainer/portainer
+    environment:
+      - VIRTUAL_HOST=${PORTAINER_DOMAIN}
+      - VIRTUAL_PORT=9000
+      - VIRTUAL_PROTO=http
+      - LETSENCRYPT_HOST=${PORTAINER_DOMAIN}
+      - LETSENCRYPT_EMAIL=${LETSENCRYPT_EMAIL}
+    command: -H unix:///var/run/docker.sock
+    restart: always
+    networks:
+      - frontend
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - portainer-data:/data
+
+  # Cadvisor should not be exposed externally because it has no auth-mechanism
+  # Change 8080:8080 to someport:8080 if you need to free up 8080, and access cadvisor on localhost:someport instead.
+  cadvisor:
+    image: 'google/cadvisor:latest'
+    container_name: 'cadvisor'
+    networks:
+      - agents
+    ports:
+      - "8080:8080"
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+      - /dev/disk/:/dev/disk:ro
+
+  sematext-agent:
+    image: 'sematext/agent:latest'
+    container_name: 'sematext-agent'
+    networks:
+      - agents
+    # Invert commenting on following 3 lines in order to disable temporarily
+    #command: echo "Disabled"
+    #restart: "no"
+    restart: always
+    environment:
+      - affinity:container!=*sematext-agent*
+      - CONTAINER_TOKEN=${SEMATEXT_CONTAINER_TOKEN}
+      - INFRA_TOKEN=${SEMATEXT_INFRA_TOKEN}
+      - SERVER_BASE_URL=https://spm-receiver.eu.sematext.com
+      - LOGS_RECEIVER_URL=https://logsene-receiver.eu.sematext.com
+      - EVENTS_RECEIVER_URL=https://event-receiver.eu.sematext.com
+      - JOURNAL_DIR=/var/run/st-agent
+      - LOGGING_WRITE_EVENTS=false
+      - LOGGING_REQUEST_TRACKING=false
+      - LOGGING_LEVEL=info
+      - NODE_NAME=$HOSTNAME
+      - CONTAINER_SKIP_BY_IMAGE=sematext
+    cap_add:
+      - SYS_ADMIN
+    volumes:
+      - '/var/run/:/var/run/'
+      - '/sys/kernel/debug:/sys/kernel/debug'
+      - '/proc:/host/proc:ro'
+      - '/etc:/host/etc:ro'
+      - '/sys:/host/sys:ro'
+      - '/usr/lib:/host/usr/lib:ro'
+
+  sematext-logagent:
+    image: 'sematext/logagent:latest'
+    container_name: 'sematext-logagent'
+    networks:
+      - agents
+    #command: echo "Disabled"
+    #restart: "no"
+    restart: always
+    environment:
+      - LOGS_TOKEN=${SEMATEXT_LOGS_TOKEN}
+      - LOGS_RECEIVER_URL=https://logsene-receiver.eu.sematext.com
+      - EVENTS_RECEIVER_URL=https://event-receiver.eu.sematext.com
+    volumes:
+      - '/var/run/docker.sock:/var/run/docker.sock'
+
+  openvpn-server:
+    #cap_add:
+    # - NET_ADMIN
+    privileged: true
+    image: kylemanna/openvpn
+    container_name: openvpn-server
+    ports:
+      - "1194:1194/udp"
+    #  - "443:443/tcp"
+    restart: always
+    volumes:
+     - ${MY_DOCKER_DATA_DIR}/openvpn-server/config:/etc/openvpn
+
+  synology-rsync-client:
+    build: ./synology-rsync-client
+    container_name: synology-rsync-client
+    # tty=true just to get it running
+    tty: true
+    volumes:
+       - ${DOCKER_VOLUMES}/${COMPOSE_PROJECT_NAME}_owncloud-files:/data/:ro
+    environment:
+      - CRON_TASK_1=${SYNOLOGY_CRON_TASK_1}
+
