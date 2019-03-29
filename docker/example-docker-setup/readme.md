@@ -50,8 +50,6 @@ Specify the full path to your config directory in the MY_DOCKER_DATA_DIR variabl
 -- Automatic Letsencrypt certs
 - OpenVPN
 -- An OpenVPN server (note, may not work correctly - see readme.md in openvpn directory)
-- Backup
--- An rsync client readily configured to work over SSH against Synology NAS
 - Montitoring and logging
 -- Sematext monitoring agent
 -- Sematext log agent
@@ -76,10 +74,21 @@ docker-compose up
 - Remember to create admin user and password for portainer(!) Or else, it's first come-first served.
 
 ## Backup
-It is recommended to set up the Backup container to to take care of automatic remote backups of relevant files. To achieve this, simply mount existing docker volumes in ro-mode inside /data/ in the backup container and let the default cron-job do the rest (assuming the backup-container is able to rsync to the target).
+Mostly, it will be good enough to back up the my-docker-data directory.
 
 ## Restore
-In order to restore do all installation first. Then stop all containers. Retrieve the backup and replace the new volumes with old data. Check permissions.
+In order to restore you go far with only the my-docker-data directory.
+1) Make sure you have have the docker files: git clone https://github.com/remimikalsen/theawesomegarage.git docker-setup
+2) Make sure you have done the necessary configurations in docker-setup/.env
+3) Restore the my-docker-data directory and make sure your .env file points to this data directory
+4) Run docker-compose up -d from within the docker-setup directory
+
+## Updates
+In order to update your repo, you can do monitoring, or just do blind updates once a week (with the risk involved!)
+Run:
+- docker-compose up -d --force-recreate --build
+- docker image prune -f
+Of course, this will impact uptime and eventually it will break your setup.
 
 ## Known problems
 ## No DNS resolution on Ubuntu 18.04 OpenVPN client
