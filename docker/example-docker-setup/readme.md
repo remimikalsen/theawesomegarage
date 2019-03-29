@@ -62,10 +62,10 @@ Before running docker-compose up, initialize containers that need initializing!
   - sudo chown -R $(whoami): ../my-docker-data/openvpn-server
   - Create OpenVPN-server client certs
     - export CLIENTNAME="your_client_name"
-    - # with a passphrase (recommended)
-    - docker-compose run --rm openvpn easyrsa build-client-full $CLIENTNAME
-    - # without a passphrase (not recommended)
-    - docker-compose run --rm openvpn easyrsa build-client-full $CLIENTNAME nopass
+    - with a passphrase (recommended)
+      - docker-compose run --rm openvpn easyrsa build-client-full $CLIENTNAME
+    - without a passphrase (not recommended)
+      - docker-compose run --rm openvpn easyrsa build-client-full $CLIENTNAME nopass
   - Retrieve the client configuration with embedded certificates
     - docker-compose run --rm openvpn ovpn_getclient $CLIENTNAME > $CLIENTNAME.ovpn
   - See more here: https://github.com/kylemanna/docker-openvpn/blob/master/docs/docker-compose.md
@@ -91,7 +91,7 @@ Run:
 Of course, this will impact uptime and eventually it will break your setup.
 
 ## Known problems
-## No DNS resolution on Ubuntu 18.04 OpenVPN client
+### No DNS resolution on Ubuntu 18.04 OpenVPN client
 If you are able to ping an IP-address, but not the corresponding Domain name, you fall into this category.
 OpenVPN can't by itself fix DNS-issues on Ubuntu 18.04 clients. You need to take additional steps. This is one way of fixing it:
 - On the client, run:
