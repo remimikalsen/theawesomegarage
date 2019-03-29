@@ -137,18 +137,12 @@ services:
   nginx:
     container_name: nginx
     image: nginx:latest
-    healthcheck:
-      test: ['CMD', '/bin/healthcheck.sh']
-      interval: 1m
-      timeout: 5s
-      retries: 3
     volumes:
       - nginx-conf:/etc/nginx/conf.d
       - nginx-vhost:/etc/nginx/vhost.d
       - nginx-html:/usr/share/nginx/html
       - nginx-certs:/etc/nginx/certs:ro
       - nginx-logs:/var/log/nginx
-      - ${MY_DOCKER_DATA_DIR}/nginx/healthcheck.sh:/bin/healthcheck.sh 
     ports:
       - 80:80
       - 443:443
