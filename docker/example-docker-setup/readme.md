@@ -27,7 +27,7 @@ PS! Use latest stable release: https://github.com/docker/compose/releases
 The follwoing modifications need to be done on the host OS for Redis to work properly.
 - append vm.overcommit_memory=1 to /etc/sysctl.conf
 - run following command as root on host: echo never > /sys/kernel/mm/transparent_hugepage/enabled
-- Note that Docker uses the PREROUTE chain in iptables, which shortcuts limitations put in the INPUT chain. Thus, do not publish ports in docker-compose.yml that aren't supposed to be public. If you're behind a NAT firewall, you're probably good, but if you're connected directly to the internet, beware!
+- Note that Docker uses the PREROUTE chain in iptables, which shortcuts limitations put in the INPUT chain. Thus, do not publish ports in docker-compose.yml that aren't supposed to be public. If you're behind a NAT firewall/router, you're probably good, but if you're connected directly to the internet, beware!
 
 ## Bind mounts
 The containers in this stack will need a place to store persistent data. It is recommended to put this data in a directory outside of the Git-checkout dir - simply to avoid adding and pushing sensitive data to remote repo by accident.
@@ -39,36 +39,36 @@ Specify the full path to your config directory in the MY_DOCKER_DATA_DIR variabl
 
 ## Applications included in this stack
 - Owncloud (external, https)
--- Owncloud http
--- Owncloud db
--- Owncloud redis
+  - Owncloud http
+  - Owncloud db
+  - Owncloud redis
 - Basic Apache server with PHP support (external, https)
 - Portainer (external, https)
 - Cadvisor (home network only)
 - Nginx
--- Automatic vhost generator
--- Automatic Letsencrypt certs
+  - Automatic vhost generator
+  - Automatic Letsencrypt certs
 - OpenVPN
--- An OpenVPN server (note, may not work correctly - see readme.md in openvpn directory)
+  - An OpenVPN server (note, may not work correctly - see readme.md in openvpn directory)
 - Montitoring and logging
--- Sematext monitoring agent
--- Sematext log agent
+  - Sematext monitoring agent
+  - Sematext log agent
 
 ## Installation
 Before running docker-compose up, initialize containers that need initializing!
 - OpenVPN-server
--- docker-compose run --rm openvpn-server ovpn_genconfig -u udp://VPN.SERVERNAME.COM
--- docker-compose run --rm openvpn-server ovpn_initpki
--- sudo chown -R $(whoami): ../my-docker-data/openvpn-server
--- Create OpenVPN-server client certs
---- export CLIENTNAME="your_client_name"
---- # with a passphrase (recommended)
---- docker-compose run --rm openvpn easyrsa build-client-full $CLIENTNAME
---- # without a passphrase (not recommended)
---- docker-compose run --rm openvpn easyrsa build-client-full $CLIENTNAME nopass
---  Retrieve the client configuration with embedded certificates
---- docker-compose run --rm openvpn ovpn_getclient $CLIENTNAME > $CLIENTNAME.ovpn
--- See more here: https://github.com/kylemanna/docker-openvpn/blob/master/docs/docker-compose.md
+  - docker-compose run --rm openvpn-server ovpn_genconfig -u udp://VPN.SERVERNAME.COM
+  - docker-compose run --rm openvpn-server ovpn_initpki
+  - sudo chown -R $(whoami): ../my-docker-data/openvpn-server
+  - Create OpenVPN-server client certs
+    - export CLIENTNAME="your_client_name"
+    - # with a passphrase (recommended)
+    - docker-compose run --rm openvpn easyrsa build-client-full $CLIENTNAME
+    - # without a passphrase (not recommended)
+    - docker-compose run --rm openvpn easyrsa build-client-full $CLIENTNAME nopass
+  - Retrieve the client configuration with embedded certificates
+    - docker-compose run --rm openvpn ovpn_getclient $CLIENTNAME > $CLIENTNAME.ovpn
+  - See more here: https://github.com/kylemanna/docker-openvpn/blob/master/docs/docker-compose.md
 
 docker-compose up
 - Remember to create admin user and password for portainer(!) Or else, it's first come-first served.
@@ -95,9 +95,9 @@ Of course, this will impact uptime and eventually it will break your setup.
 If you are able to ping an IP-address, but not the corresponding Domain name, you fall into this category.
 OpenVPN can't by itself fix DNS-issues on Ubuntu 18.04 clients. You need to take additional steps. This is one way of fixing it:
 - On the client, run:
--- sudo mkdir -p /etc/openvpn/scripts
--- sudo wget https://raw.githubusercontent.com/jonathanio/update-systemd-resolved/master/update-systemd-resolved -P /etc/openvpn/scripts/
--- sudo chmod +x /etc/openvpn/scripts/update-systemd-resolved
+  - sudo mkdir -p /etc/openvpn/scripts
+  - sudo wget https://raw.githubusercontent.com/jonathanio/update-systemd-resolved/master/update-systemd-resolved -P /etc/openvpn/scripts/
+  - sudo chmod +x /etc/openvpn/scripts/update-systemd-resolved
 
 Then, change change your client's ovpn-file and append the following to the bottom:
 script-security 2
