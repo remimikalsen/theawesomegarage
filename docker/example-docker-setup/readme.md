@@ -83,12 +83,27 @@ In order to restore you go far with only the my-docker-data directory.
 3) Restore the my-docker-data directory and make sure your .env file points to this data directory
 4) Run docker-compose up -d from within the docker-setup directory
 
-## Updates
-In order to update your repo, you can do monitoring, or just do blind updates once a week (with the risk involved!)
-Run:
-- docker-compose up -d --force-recreate --build
-- docker image prune -f
-Of course, this will impact uptime and eventually it will break your setup.
+## Housekeeping
+In general, you want to be warned when something goes wrong. Set up Postfix to send you important e-mails on cron jobs etc.
+- Check out this article: https://www.linode.com/docs/email/postfix/configure-postfix-to-send-mail-using-gmail-and-google-apps-on-debian-or-ubuntu/
+- After you have an MTA installed, remember to rediret local mail sent to root, www-data, etc. to an inbox you check daily:
+  - sudo vi /etc/aliases
+  - sudo newaliases
+
+In order to keep the system updated, I suggest installing apticron:
+- sudo apt-get install apticron
+- sudo vi /etc/apticron/apticron.conf
+This way, you'll be notified when there are important updates.
+
+If you are hosting your docker servers at home, you probably have dynamic IP. If you are a GoDaddy customer, this repo is gold:
+ - https://github.com/markafox/GoDaddy_Powershell_DDNS (NOTE! There is a bash variant alongside the Powershell one. The bash version works perfectly on Ubuntu 18.04).
+ - Read the readme and run the script every 15 minutes in cron and your A records can point to your real IP address. It's a poor  man's DDNS-service!
+
+In order to update your repo, you can do monitoring, or just do blind updates once a week (with the risk involved!). Why not set up the following cron job to run after your backup processes are done for the night:
+- (docker-compose up -d --force-recreate --build && docker image prune -f) >> /var/log/docker-nightly-update.log
+- Remember to create the log file beforehand, and give the user running the cron job access to editing it.
+Of course, this will impact uptime and eventually it will break your setup, but at least errors will be reported by mail.
+
 
 ## Known problems
 ### No DNS resolution on Ubuntu 18.04 OpenVPN client
