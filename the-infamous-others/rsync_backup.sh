@@ -1,4 +1,7 @@
 #!/bin/bash
+# This scripts allows you to back up several local directories to a remote server with rsync over ssh, and get the status sent by e-mail.
+# Perfect to run regular rsync backup jobs in cron and get notified of success, failure, number of files and quantity of data transferred.
+#
 # Author: Remi Mikalsen
 # The original script can be found in https://github.com/remimikalsen/theawesomegarage
 # 
