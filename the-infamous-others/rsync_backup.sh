@@ -8,6 +8,10 @@
 # In order to assure no files are excluded for the lack of privileges, the author suggests that this script is called from the root crontab.
 # sudo crontab -e
 
+#
+# Configuration
+#
+
 # To identify the server in emails
 HOST=
 
@@ -16,7 +20,8 @@ RECIPIENT=
 
 # What local directories to sync
 SYNC_DIRS=(
- "/home"
+ "/home1"
+ "/home2"
 )
 # Where to log results on disk
 LOG_FILE=/var/log/rsync.log
@@ -24,7 +29,7 @@ LOG_FILE=/var/log/rsync.log
 # Remote server
 REMOTE_SERVER=
 
-# Remote SSH port
+# Remote port
 REMOTE_PORT=
 
 # Remote server user
@@ -37,8 +42,11 @@ REMOTE_DIR=
 IDENTITY_FILE=
 
 # Bandwith limit to avoid congesting your router
-BWLIMIT=5000
+BWLIMIT=3750
 
+#
+# Start
+#
 FAILURE=0
 MESSAGE="rsync status follows"
 
@@ -46,21 +54,26 @@ MESSAGE="rsync status follows"
 for DIR in "${SYNC_DIRS[@]}"
   do
     SECONDS=0
-    STATS=`/usr/bin/rsync --log-file=${LOG_FILE} --bwlimit=${BWLIMIT} -az --stats -h -e "/usr/bin/ssh -i ${IDENTITY_FILE} -p ${REMOTE_PORT}" --backup --backup-dir="rsync_bak_\`date '+\%F_\%H-\%M'\`" ${DIR} "${REMOTE_USER}@${REMOTE_SERVER}:${REMOTE_DIR}" | awk '/Number of regular files transferred|Total transferred file size/'`
-    
+    RESULT=`/usr/bin/rsync --log-file=${LOG_FILE} --bwlimit=${BWLIMIT} -az --stats -h -e "/usr/bin/ssh -i ${IDENTITY_FILE} -p ${REMOTE_PORT}" --backup --backup-dir="rsync_bak_\`date '+\%F_\%H-\%M'\`" ${DIR} "${REMOTE_USER}@${REMOTE_SERVER}:${REMOTE_DIR}" 2>&1`
+    FAILED=$?
     ELAPSED="$(($SECONDS / 3600))h $((($SECONDS / 60) % 60))m $(($SECONDS % 60))s"
-    if [ $? != "0" ] 
+
+    if [ $FAILED != "0" ] 
     then
       FAILURE=1
-      MESSAGE="${MESSAGE}\n\n${DIR} - failed rsyncing after ${ELAPSED}.\n${STATS}"
+      MESSAGE="${MESSAGE}\n\n${DIR} - failed rsyncing after ${ELAPSED}.\n${RESULT}"
     else
+      STATS=`echo "${RESULT}" | awk '/Number of regular files transferred|Total transferred file size/'`
       MESSAGE="${MESSAGE}\n\n${DIR} - succeeded rsyncing in ${ELAPSED}.\n${STATS}"
     fi
   done
 
 if [ $FAILURE != "0" ]
   then
-    echo -e "${MESSAGE}" | mail -s "${HOST} - FAILURES in rsync backup" ${RECIPIENT}
+    echo -e "${MESSAGE}" | mail -s "${HOST} - FAILURE in rsync backup" ${RECIPIENT}
   else
     echo -e "${MESSAGE}" | mail -s "${HOST} - rsync backup succeeded" ${RECIPIENT}
 fi
+#
+# End
+#
