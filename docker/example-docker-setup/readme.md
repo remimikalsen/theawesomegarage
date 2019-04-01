@@ -44,18 +44,18 @@ Specify the full path to your config directory in the MY_DOCKER_DATA_DIR variabl
   - Owncloud redis
 - Basic Apache server with PHP support (external, https)
 - Portainer (external, https)
-- Cadvisor (home network only)
+- Cadvisor (port 8080, http)
 - Nginx
   - Automatic vhost generator
   - Automatic Letsencrypt certs
 - OpenVPN
-  - An OpenVPN server (note, may not work correctly - see readme.md in openvpn directory)
+  - An OpenVPN server
 - Montitoring and logging
   - Sematext monitoring agent
   - Sematext log agent
 
 ## Installation
-Before running docker-compose up, initialize containers that need initializing!
+Before running docker-compose up, initialize containers that need initializing:
 - OpenVPN-server
   - docker-compose run --rm openvpn-server ovpn_genconfig -u udp://VPN.SERVERNAME.COM
   - docker-compose run --rm openvpn-server ovpn_initpki
@@ -75,13 +75,13 @@ You need to adjust Nginx-settings if you intend to use Owncloud with files bigge
   - ~/my-docker-data/nginx/vhost.d/my.vhost.com
 
 docker-compose up
-- Remember to create admin user and password for portainer(!) Or else, it's first come-first served.
+- Remember to create admin user and password for portainer(!) Or else, it's first come-first served. The server shuts down after 5 minutes if you do not register an admin account within that timeframe.
 
 ## Backup
-Mostly, it will be good enough to back up the my-docker-data directory.
+Mostly, it will be good enough to back up the my-docker-data directory. Check out this rsync script: https://github.com/remimikalsen/theawesomegarage/blob/master/the-infamous-others/rsync_backup.sh
 
 ## Restore
-In order to restore you go far with only the my-docker-data directory.
+In order to restore a corrupt system, you are mostly good with backing up the my-docker-data directory.
 1) Make sure you have have the docker files: git clone https://github.com/remimikalsen/theawesomegarage.git docker-setup
 2) Make sure you have done the necessary configurations in docker-setup/.env
 3) Restore the my-docker-data directory and make sure your .env file points to this data directory
@@ -99,14 +99,14 @@ In order to keep the system updated, I suggest installing apticron:
 - sudo vi /etc/apticron/apticron.conf
 This way, you'll be notified when there are important updates.
 
-If you are hosting your docker servers at home, you probably have dynamic IP. If you are a GoDaddy customer, this repo is gold:
+If you are hosting your docker servers at home, you probably have a dynamic IP address. If you are a GoDaddy customer, this repo is gold:
  - https://github.com/markafox/GoDaddy_Powershell_DDNS (NOTE! There is a bash variant alongside the Powershell one. The bash version works perfectly on Ubuntu 18.04).
- - Read the readme and run the script every 15 minutes in cron and your A records can point to your real IP address. It's a poor  man's DDNS-service!
+ - Read the readme and run the script every 15 minutes in cron and your A records can point to your ever changing IP address. It's a poor  man's DDNS-service!
 
-In order to update your repo, you can do monitoring, or just do blind updates once a week (with the risk involved!). Why not set up the following cron job to run after your backup processes are done for the night:
-- (docker-compose up -d --force-recreate --build && docker image prune -f) >> /var/log/docker-nightly-update.log
-- Remember to create the log file beforehand, and give the user running the cron job access to editing it.
-Of course, this will impact uptime and eventually it will break your setup, but at least errors will be reported by mail.
+In order to update all your docker containers regularly, you can either do monitoring and take action as needed, or just do blind updates once a week (with the risk involved!). Why not set up the following cron job to run after your backup processes are done for the night:
+- (cd /path/to/docker-compose.yaml && /usr/local/bin/docker-compose up -d --force-recreate --build && /usr/bin/docker image prune -f) >> /var/log/docker-nightly-update.log
+- Create the log file beforehand, and give the user running the cron job access to editing it.
+Of course, this blind update method will impact uptime and eventually it will break your setup, but at least some majors errors will be reported by mail and you won't so easily forget critical security updates.
 
 
 ## Known problems
