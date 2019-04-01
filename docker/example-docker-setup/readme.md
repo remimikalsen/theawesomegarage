@@ -70,6 +70,10 @@ Before running docker-compose up, initialize containers that need initializing!
     - docker-compose run --rm openvpn ovpn_getclient $CLIENTNAME > $CLIENTNAME.ovpn
   - See more here: https://github.com/kylemanna/docker-openvpn/blob/master/docs/docker-compose.md
 
+You need to adjust Nginx-settings if you intend to use Owncloud with files bigger than 2 megabytes:
+- Read and rename the following file according to instructions:
+  - ~/my-docker-data/nginx/vhost.d/my.vhost.com
+
 docker-compose up
 - Remember to create admin user and password for portainer(!) Or else, it's first come-first served.
 
@@ -108,7 +112,7 @@ Of course, this will impact uptime and eventually it will break your setup, but 
 ## Known problems
 ### No DNS resolution on Ubuntu 18.04 OpenVPN client
 If you are able to ping an IP-address, but not the corresponding Domain name, you fall into this category.
-OpenVPN can't by itself fix DNS-issues on Ubuntu 18.04 clients. You need to take additional steps. This is one way of fixing it:
+OpenVPN can't by itself resolve DNS-issues on Ubuntu 18.04 clients. You need to take additional steps. This is one way of fixing it:
 - On the client, run:
   - sudo mkdir -p /etc/openvpn/scripts
   - sudo wget https://raw.githubusercontent.com/jonathanio/update-systemd-resolved/master/update-systemd-resolved -P /etc/openvpn/scripts/
@@ -123,7 +127,7 @@ Note! If you already have a script-security section, place up and down in that s
 Note2! If you already have up and down definitions, comment the old ones out and use the aforementioned definitions.
 
 ### Owncloud sync fails and client reports 413 Request Entity Too Large
-This happens because the official Owncloud docker image is set up to accept file uploads of 20G. However, Nginx will by defauly only allow body sizes (uploads/downloads) of 2M. The best way to fix this is to specify to Nginx that Owncloud needs bigger body sizes. You can fix this by adding a file to the /etc/nginx/vhost.d/ director, named after the vhost Owncloud runs on. In theawesomegarage, this is fixed by renaming a single pre-defined file:
+This happens because the official Owncloud docker image is set up to accept file uploads of 20G. However, Nginx will by defauly only allow body sizes (uploads/downloads) of 2M. The best way to resolve this is to specify to Nginx that Owncloud needs bigger body sizes. You can do this by adding a file to the /etc/nginx/vhost.d/ directory, named after the vhost Owncloud runs on. In theawesomegarage, this is fixed by renaming a single pre-defined file:
 - On the host, read and rename the following file according to your vhost setup:
   - ~/my-docker-data/nginx/vhost.d/my.vhost.com
 
