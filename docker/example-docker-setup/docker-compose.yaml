@@ -25,8 +25,6 @@ volumes:
     driver: local
   nginx-certs:
     driver: local
-  nginx-vhost:
-    driver: local
   nginx-html:
     driver: local
   portainer-data:
@@ -139,7 +137,7 @@ services:
     image: nginx:latest
     volumes:
       - nginx-conf:/etc/nginx/conf.d
-      - nginx-vhost:/etc/nginx/vhost.d
+      - ${MY_DOCKER_DATA_DIR}/nginx/vhost.d:/etc/nginx/vhost.d
       - nginx-html:/usr/share/nginx/html
       - nginx-certs:/etc/nginx/certs:ro
       - nginx-logs:/var/log/nginx
@@ -163,7 +161,7 @@ services:
       - frontend
     volumes:
       - nginx-conf:/etc/nginx/conf.d
-      - nginx-vhost:/etc/nginx/vhost.d
+      - ${MY_DOCKER_DATA_DIR}/nginx/vhost.d:/etc/nginx/vhost.d
       - nginx-html:/usr/share/nginx/html
       - nginx-certs:/etc/nginx/certs:ro
       - /var/run/docker.sock:/tmp/docker.sock:ro
@@ -183,7 +181,7 @@ services:
       - frontend
     volumes:
       - nginx-conf:/etc/nginx/conf.d
-      - nginx-vhost:/etc/nginx/vhost.d
+      - ${MY_DOCKER_DATA_DIR}/nginx/vhost.d:/etc/nginx/vhost.d
       - nginx-html:/usr/share/nginx/html
       - nginx-certs:/etc/nginx/certs:rw
       - /var/run/docker.sock:/var/run/docker.sock:ro

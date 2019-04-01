@@ -122,3 +122,9 @@ down /etc/openvpn/scripts/update-systemd-resolved
 Note! If you already have a script-security section, place up and down in that section
 Note2! If you already have up and down definitions, comment the old ones out and use the aforementioned definitions.
 
+### Owncloud sync fails and client reports 413 Request Entity Too Large
+This happens because the official Owncloud docker image is set up to accept file uploads of 20G. However, Nginx will by defauly only allow body sizes (uploads/downloads) of 2M. The best way to fix this is to specify to Nginx that Owncloud needs bigger body sizes. You can fix this by adding a file to the /etc/nginx/vhost.d/ director, named after the vhost Owncloud runs on. In theawesomegarage, this is fixed by renaming a single pre-defined file:
+- On the host, read and rename the following file according to your vhost setup:
+  - ~/my-docker-data/nginx/vhost.d/my.vhost.com
+
+Note! If you need to specify other Nginx-configurations per vhost, this is the easiest way to go about it. Restart the nginx-container after making changes.
