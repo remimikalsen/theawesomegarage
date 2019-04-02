@@ -48,6 +48,7 @@ Specify the full path to your config directory in the MY_DOCKER_DATA_DIR variabl
 - Nginx
   - Automatic vhost generator
   - Automatic Letsencrypt certs
+- Nginx upstream server for executing redirects
 - OpenVPN
   - An OpenVPN server
 - Montitoring and logging
@@ -108,6 +109,12 @@ In order to update all your docker containers regularly, you can either do monit
 - Create the log file beforehand, and give the user running the cron job access to editing it.
 Of course, this blind update method will impact uptime and eventually it will break your setup, but at least some majors errors will be reported by mail and you won't so easily forget critical security updates.
 
+## Nginx container for redirects
+I love that my front-end Nginx-container vhosts and certificates are automatically configured by the nginx-gen and nginx-ssl containers. If I really, really need to tweak a vhost configuration, it better be some critical setting regarding one of the already existing vhosts (as was the case with the max body size on Owncloud).
+
+However, I came across a case that tempted me to do some hacking. I have a web page hosted on Wordpress.org: https://remimikalsen.com. On Wordpress it costs money to map domains to your account, and it so happens that I also own a short hand domain, remim.com, that I also wanted to point to my Wordpress site. My initial thought was to let my existing Nginx container handle the redirect. However, I soon realied that would become a mess. Instead I set up an upstream Nginx-server that my front end Nginx talks to.
+
+With this setup, I gain super easy SSL-certificates for my redirect domains, consistent logging and it's much easier to detect where in the pipe errors arise. And last, but not the least, the configuration for my upstream redirect server is super-easy and doesn't mess with my nginx, nginx-gen, nginx-ssl setup. And actually, I have come to learn that more people recommend this pattern.
 
 ## Known problems
 ### No DNS resolution on Ubuntu 18.04 OpenVPN client

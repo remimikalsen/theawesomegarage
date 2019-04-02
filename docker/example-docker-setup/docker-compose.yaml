@@ -132,6 +132,23 @@ services:
     volumes:
       - ${MY_DOCKER_DATA_DIR}/simple-apache-php/src:/var/www/html
 
+  nginx-redirect:
+    container_name: nginx-redirect
+    image: nginx:latest
+    restart: always
+    expose:
+      - "80"
+    environment:
+      - VIRTUAL_HOST=${REDIRECT_DOMAINS}
+      - VIRTUAL_PORT=80
+      - VIRTUAL_PROTO=http
+      - LETSENCRYPT_HOST=${REDIRECT_DOMAINS}
+      - LETSENCRYPT_EMAIL=${LETSENCRYPT_EMAIL}
+    networks:
+      - frontend
+    volumes:
+      - ${MY_DOCKER_DATA_DIR}/nginx-redirect/conf.d:/etc/nginx/conf.d
+
   nginx:
     container_name: nginx
     image: nginx:latest
