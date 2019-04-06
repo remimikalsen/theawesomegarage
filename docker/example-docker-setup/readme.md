@@ -54,6 +54,8 @@ Specify the full path to your config directory in the MY_DOCKER_DATA_DIR variabl
 - Montitoring and logging
   - Sematext monitoring agent
   - Sematext log agent
+- Grav
+-- Grav is a no database flat file CMS system. The grav image enables you to create a web page.
 
 ## Installation
 Before running docker-compose up, initialize containers that need initializing:
@@ -70,12 +72,15 @@ Before running docker-compose up, initialize containers that need initializing:
   - Retrieve the client configuration with embedded certificates
     - docker-compose run --rm openvpn ovpn_getclient $CLIENTNAME > $CLIENTNAME.ovpn
   - See more here: https://github.com/kylemanna/docker-openvpn/blob/master/docs/docker-compose.md
+- Grav
+  - You need to download the grav package and mount it to the grav container
+    - cd ${MY_DOCKER_DATA_DIR} && git clone https://github.com/getgrav/grav.git grav
 
 You need to adjust Nginx-settings if you intend to use Owncloud with files bigger than 2 megabytes:
 - Read and rename the following file according to instructions:
   - ~/my-docker-data/nginx/vhost.d/my.vhost.com
 
-docker-compose up
+docker-compose up -d
 - Remember to create admin user and password for portainer(!) Or else, it's first come-first served. The server shuts down after 5 minutes if you do not register an admin account within that timeframe.
 
 ## Backup
@@ -95,7 +100,7 @@ In general, you want to be warned when something goes wrong. Set up Postfix to s
   - sudo vi /etc/aliases
   - sudo newaliases
 
-In order to keep the system updated, I suggest installing apticron:
+In order to keep the host system updated, I suggest installing apticron:
 - sudo apt-get install apticron
 - sudo vi /etc/apticron/apticron.conf
 This way, you'll be notified when there are important updates.
@@ -104,10 +109,8 @@ If you are hosting your docker servers at home, you probably have a dynamic IP a
  - https://github.com/markafox/GoDaddy_Powershell_DDNS (NOTE! There is a bash variant alongside the Powershell one. The bash version works perfectly on Ubuntu 18.04).
  - Read the readme and run the script every 15 minutes in cron and your A records can point to your ever changing IP address. It's a poor  man's DDNS-service!
 
-In order to update all your docker containers regularly, you can either do monitoring and take action as needed, or just do blind updates once a week (with the risk involved!). Why not set up the following cron job to run after your backup processes are done for the night:
-- (cd /path/to/docker-compose.yaml && /usr/local/bin/docker-compose up -d --force-recreate --build && /usr/bin/docker image prune -f) >> /var/log/docker-nightly-update.log
-- Create the log file beforehand, and give the user running the cron job access to editing it.
-Of course, this blind update method will impact uptime and eventually it will break your setup, but at least some majors errors will be reported by mail and you won't so easily forget critical security updates.
+In order to update all your docker containers regularly, you can either do monitoring and take action as needed, use pyouroboros, Kubernetes or just do blind updates at a regular interval with cron. I've included an upgrade script with the docker example setup that does the latter. Just fill in the configuration variables and let it run in cron.
+Of course, this blind update method will impact uptime (although very slightly) and eventually it will break your setup (because eventually, some latest tag will introduce changes that are incompatible with your rig). The script attempts to send you emails both when errors occur and to report success.
 
 ## Nginx container for redirects
 I love that my front-end Nginx-container vhosts and certificates are automatically configured by the nginx-gen and nginx-ssl containers. If I really, really need to tweak a vhost configuration, it better be some critical setting regarding one of the already existing vhosts (as was the case with the max body size on Owncloud).
