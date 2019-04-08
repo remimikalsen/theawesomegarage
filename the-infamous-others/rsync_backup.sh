@@ -54,7 +54,7 @@ MESSAGE="rsync status follows"
 for DIR in "${SYNC_DIRS[@]}"
   do
     SECONDS=0
-    RESULT=`/usr/bin/rsync --log-file=${LOG_FILE} --bwlimit=${BWLIMIT} -az --stats -h -e "/usr/bin/ssh -i ${IDENTITY_FILE} -p ${REMOTE_PORT}" --backup --backup-dir="rsync_bak_\`date '+\%F_\%H-\%M'\`" ${DIR} "${REMOTE_USER}@${REMOTE_SERVER}:${REMOTE_DIR}" 2>&1`
+    RESULT=`/usr/bin/rsync --log-file=${LOG_FILE} --bwlimit=${BWLIMIT} -az --stats -h -e "/usr/bin/ssh -i ${IDENTITY_FILE} -p ${REMOTE_PORT}" --delete --backup --backup-dir="rsync_bak_\`date '+\%F_\%H-\%M'\`" ${DIR} "${REMOTE_USER}@${REMOTE_SERVER}:${REMOTE_DIR}" 2>&1`
     FAILED=$?
     ELAPSED="$(($SECONDS / 3600))h $((($SECONDS / 60) % 60))m $(($SECONDS % 60))s"
 
