@@ -8,6 +8,9 @@
 #
 # For my setup, a typical run gives me appriximately 45 seconds downtime. Your mileage may vary.
 # A cleaner solution to maintaining up to date containers is https://github.com/pyouroboros/ouroboros
+# See also:
+#  - https://theawesomegarage.com/blog/updating-your-docker-containers-automatically
+#  - https://theawesomegarage.com/blog/updating-your-docker-containers-automatically-v2
 #
 # Put the script in the crontab belonging to the user you normally use to run docker commands.
 # crontab -e

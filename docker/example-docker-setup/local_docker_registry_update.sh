@@ -2,7 +2,7 @@
 # Author: Remi Mikalsen
 # The original script can be found in https://github.com/remimikalsen/theawesomegarage
 #
-# Build, tag and push images to local registry
+# Pull base images, build, tag and push new images to private registry
 # sudo crontab -e
 
 
@@ -11,13 +11,18 @@
 #
 
 # To identify the server in emails
-HOST=home-server
+HOST=
 
 # Who should receive logs by email
-RECIPIENT=remimikalsen@gmail.com
+RECIPIENT=
 
 # Base dir under which there are directories containing Dockerfiles 
-BASE_DIR=/home/remi/docker-setup
+BASE_DIR=
+
+# Private registry username and password
+REGISTRY=
+REGISTRY_USERNAME=
+REGISTRY_PASSWORD_FILE=
 
 # Run following command to get an *idea* of what images ar used:
 # grep FROM ${BASE_DIR}/docker-setup/*/Dockerfile
@@ -27,8 +32,8 @@ PULL_IMAGES=(
 
 # Directories under BASE_DIR that containt Dockerfiles to generate images from
 BUILD_IMAGES=(
- "grav"
- "simple-apache-php"
+ "dir1"
+ "dir2"
 )
 
 
@@ -39,7 +44,7 @@ SECONDS=0
 FAILURE=0
 MESSAGE="custom docker image update status follows"
 
-# First pull base images used in the various Dockerfiles
+# First pull base images used in the various LOCAL Dockerfiles from PUBLIC repos
 for IMAGE in "${PULL_IMAGES[@]}"
   do
     RESULT=`/usr/bin/docker pull ${IMAGE} 2>&1`
@@ -69,16 +74,16 @@ for IMAGE in "${BUILD_IMAGES[@]}"
       MESSAGE="${MESSAGE}\n\nCompleted docker build after: ${ELAPSED}:\n${RESULT}"
     fi
 
-    RESULT=`/usr/bin/docker tag grav localhost:5000/${IMAGE}:latest 2>&1`
+    RESULT=`/usr/bin/docker tag grav ${REGISTRY}/${IMAGE}:latest 2>&1`
     if [ $FAILED != "0" ]
     then
       FAULURE=1
-      MESSAGE="${MESSAGE}\n\nFailed taggingimage after: ${ELAPSED}:\n${RESULT}"
+      MESSAGE="${MESSAGE}\n\nFailed tagging image after: ${ELAPSED}:\n${RESULT}"
     else
       MESSAGE="${MESSAGE}\n\nCompleted docker tag after: ${ELAPSED}:\n${RESULT}"
     fi
 
-    RESULT=`/usr/bin/docker push localhost:5000/${IMAGE}:latest 2>&1`
+    RESULT=`cat ${REGISTRY_PASSWORD_FILE} | /usr/bin/docker login -u${REGISTRY_USERNAME} --password-stdin ${REGISTRY} 2>&1 && /usr/bin/docker push ${REGISTRY}/${IMAGE}:latest 2>&1`
     if [ $FAILED != "0" ]
     then
       FAULURE=1
