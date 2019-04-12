@@ -149,6 +149,9 @@ However, I came across a case that tempted me to do some hacking. I have a web p
 
 With this setup, I gain super easy SSL-certificates for my redirect domains, consistent logging and it's much easier to detect where in the pipe errors arise. And last, but not the least, the configuration for my upstream redirect server is super-easy and doesn't mess with my nginx, nginx-gen, nginx-ssl setup. And actually, I have come to learn that more people recommend this pattern.
 
+## Info about Prometheus and Grafana
+On my TODO-list.
+
 ## Known problems
 ### No DNS resolution on Ubuntu 18.04 OpenVPN client
 If you are able to ping an IP-address, but not the corresponding Domain name, you fall into this category.
