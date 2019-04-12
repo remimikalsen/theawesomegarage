@@ -1,3 +1,5 @@
+# This template has been altered to set up a nginx-vts-status host
+# This host is necessary for Nginx to publish data for the promethes status exporter
 {{ $CurrentContainer := where $ "ID" .Docker.CurrentContainerID | first }}
 
 {{ define "upstream" }}
@@ -114,6 +116,20 @@ server {
 	ssl_certificate_key /etc/nginx/certs/default.key;
 }
 {{ end }}
+
+server {
+        listen      80;
+        server_name nginx-vts-status;
+
+        location = /status/format/html {
+            vhost_traffic_status_display;
+            vhost_traffic_status_display_format html;
+        }
+        location = /status/format/json {
+            vhost_traffic_status_display;
+            vhost_traffic_status_display_format json;
+        }
+}
 
 {{ range $host, $containers := groupByMulti $ "Env.VIRTUAL_HOST" "," }}
 

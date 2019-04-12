@@ -29,6 +29,11 @@ volumes:
     driver: local
   portainer-data:
     driver: local
+  prometheus_data:
+    driver: local
+  grafana_data:
+    driver: local
+
 
 services:
 
@@ -42,6 +47,7 @@ services:
       - owncloud-db
       - owncloud-redis
     environment:
+      - TZ=Europe/Oslo
       - VIRTUAL_HOST=${OWNCLOUD_DOMAIN}
       - VIRTUAL_PORT=8080
       - VIRTUAL_PROTO=http
@@ -74,6 +80,7 @@ services:
     image: webhippie/mariadb:latest
     restart: always
     environment:
+      - TZ=Europe/Oslo
       - MARIADB_ROOT_PASSWORD=owncloud
       - MARIADB_USERNAME=owncloud
       - MARIADB_PASSWORD=owncloud
@@ -96,6 +103,7 @@ services:
     image: webhippie/redis:latest
     restart: always
     environment:
+      - TZ=Europe/Oslo
       - REDIS_DATABASES=1
     sysctls: 
       net.core.somaxconn: 511
@@ -113,10 +121,12 @@ services:
   simple-apache-php:
     container_name: simple-apache-php
     build: ./simple-apache-php/.
+    #image: local.registry.com/simple-apache-php:latest
     restart: always
     expose:
       - "80"
     environment:
+      - TZ=Europe/Oslo
       - VIRTUAL_HOST=${SIMPLE_APACHE_PHP_DOMAIN}
       - VIRTUAL_PORT=80
       - VIRTUAL_PROTO=http
@@ -139,6 +149,7 @@ services:
     expose:
       - "80"
     environment:
+      - TZ=Europe/Oslo
       - VIRTUAL_HOST=${REDIRECT_DOMAINS}
       - VIRTUAL_PORT=80
       - VIRTUAL_PROTO=http
@@ -152,10 +163,12 @@ services:
   grav:
     container_name: grav
     build: ./grav/.
+    #image: local.registry.com/grav:latest
     restart: always
     expose:
       - "80"
     environment:
+      - TZ=Europe/Oslo
       - VIRTUAL_HOST=${GRAV_DOMAIN}
       - VIRTUAL_PORT=80
       - VIRTUAL_PROTO=http
@@ -168,32 +181,42 @@ services:
 
   nginx:
     container_name: nginx
-    image: nginx:latest
+    build: ./nginx-vts/.
+    #image: local.registry.com/nginx-vts:latest 
     restart: always
+    environment:
+      - TZ=Europe/Oslo
     volumes:
       - nginx-conf:/etc/nginx/conf.d
       - ${MY_DOCKER_DATA_DIR}/nginx/vhost.d:/etc/nginx/vhost.d
       - nginx-html:/usr/share/nginx/html
       - nginx-certs:/etc/nginx/certs:ro
       - nginx-logs:/var/log/nginx
+      - ${MY_DOCKER_DATA_DIR}/nginx/auth/.htpasswd:/etc/nginx/.htpasswd
+      - ${MY_DOCKER_DATA_DIR}/nginx/GeoIPCity.dat:/usr/share/GeoIP/GeoCity.dat
+      - ${MY_DOCKER_DATA_DIR}/nginx/GeoIP.dat:/usr/share/GeoIP/GeoIP.dat
     ports:
       - 80:80
       - 443:443
     networks:
-      - frontend
+      frontend:
+        aliases:
+          - nginx-vts-status
 
   nginx-gen:
     container_name: nginx-gen
     image: jwilder/docker-gen
     restart: always
     depends_on:
-      - nginx
       - owncloud
       - simple-apache-php
       - portainer
       - nginx-redirect
       - grav
       - myregistry
+      - grafana
+      - prometheus
+      - nginx
     entrypoint: /bin/sh -c
     command: ["/usr/local/bin/docker-gen -notify-sighup nginx -watch -wait 30s:60s /etc/docker-gen/templates/nginx.tmpl /etc/nginx/conf.d/default.conf"]
     networks:
@@ -213,6 +236,7 @@ services:
     depends_on:
       - nginx-gen
     environment:
+      - TZ=Europe/Oslo
       - NGINX_PROXY_CONTAINER=nginx
       - NGINX_DOCKER_GEN_CONTAINER=nginx-gen
       #- ACME_CA_URI=https://acme-staging.api.letsencrypt.org/directory
@@ -230,6 +254,7 @@ services:
     container_name: portainer
     image: portainer/portainer
     environment:
+      - TZ=Europe/Oslo
       - VIRTUAL_HOST=${PORTAINER_DOMAIN}
       - VIRTUAL_PORT=9000
       - VIRTUAL_PROTO=http
@@ -249,10 +274,12 @@ services:
     image: 'google/cadvisor:latest'
     container_name: 'cadvisor'
     restart: always
+    environment:
+      - TZ=Europe/Oslo
     networks:
       - agents
     ports:
-      - "8080:8080"
+      - "127.0.0.1:8080:8080"
     volumes:
       - /:/rootfs:ro
       - /var/run:/var/run:ro
@@ -260,61 +287,17 @@ services:
       - /var/lib/docker/:/var/lib/docker:ro
       - /dev/disk/:/dev/disk:ro
 
-  sematext-agent:
-    image: 'sematext/agent:latest'
-    container_name: 'sematext-agent'
-    networks:
-      - agents
-    # Invert commenting on following 3 lines in order to disable temporarily
-    #command: echo "Disabled"
-    #restart: "no"
-    restart: always
-    environment:
-      - affinity:container!=*sematext-agent*
-      - CONTAINER_TOKEN=${SEMATEXT_CONTAINER_TOKEN}
-      - INFRA_TOKEN=${SEMATEXT_INFRA_TOKEN}
-      - SERVER_BASE_URL=https://spm-receiver.eu.sematext.com
-      - LOGS_RECEIVER_URL=https://logsene-receiver.eu.sematext.com
-      - EVENTS_RECEIVER_URL=https://event-receiver.eu.sematext.com
-      - JOURNAL_DIR=/var/run/st-agent
-      - LOGGING_WRITE_EVENTS=false
-      - LOGGING_REQUEST_TRACKING=false
-      - LOGGING_LEVEL=info
-      - NODE_NAME=$HOSTNAME
-      - CONTAINER_SKIP_BY_IMAGE=sematext
-    cap_add:
-      - SYS_ADMIN
-    volumes:
-      - '/var/run/:/var/run/'
-      - '/sys/kernel/debug:/sys/kernel/debug'
-      - '/proc:/host/proc:ro'
-      - '/etc:/host/etc:ro'
-      - '/sys:/host/sys:ro'
-      - '/usr/lib:/host/usr/lib:ro'
-
-  sematext-logagent:
-    image: 'sematext/logagent:latest'
-    container_name: 'sematext-logagent'
-    networks:
-      - agents
-    #command: echo "Disabled"
-    #restart: "no"
-    restart: always
-    environment:
-      - LOGS_TOKEN=${SEMATEXT_LOGS_TOKEN}
-      - LOGS_RECEIVER_URL=https://logsene-receiver.eu.sematext.com
-      - EVENTS_RECEIVER_URL=https://event-receiver.eu.sematext.com
-    volumes:
-      - '/var/run/docker.sock:/var/run/docker.sock'
-
   openvpn-server:
     #cap_add:
     # - NET_ADMIN
     privileged: true
     image: kylemanna/openvpn
     container_name: openvpn-server
+    environment:
+      - TZ=Europe/Oslo
     ports:
       - "1194:1194/udp"
+    # TCP when UDP doesn't work...
     #  - "443:443/tcp"
     restart: always
     volumes:
@@ -326,8 +309,8 @@ services:
     image: pyouroboros/ouroboros
     environment:
       - CLEANUP=true
-      - INTERVAL=600
-      - LOG_LEVEL=info
+      #- INTERVAL=600
+      - CRON="0 2 * * *"
       - SELF_UPDATE=true
       - TZ=Europe/Oslo
       - NOTIFIERS="mailtos://google-username:google-app-password@gmail.com?to=email@example.com"
@@ -345,6 +328,7 @@ services:
       - "5000"
     restart: always
     environment:
+      - TZ=Europe/Oslo
       - VIRTUAL_HOST=${REGISTRY_DOMAIN}
       - VIRTUAL_PORT=5000
       - VIRTUAL_PROTO=http
@@ -357,4 +341,82 @@ services:
       - ${MY_DOCKER_DATA_DIR}/registry/data:/var/lib/registry
       - nginx-certs:/certs
       - ${MY_DOCKER_DATA_DIR}/registry/auth:/auth
+
+  prometheus:
+    container_name: prometheus
+    image: prom/prometheus:latest
+    restart: always
+    networks:
+      - frontend
+      - backend
+    expose:
+      - "9090"
+    environment:
+      - TZ=Europe/Oslo
+      - VIRTUAL_HOST=${PROMETHEUS_DOMAIN}
+      - VIRTUAL_PORT=9090
+      - VIRTUAL_PROTO=http
+      - LETSENCRYPT_HOST=${PROMETHEUS_DOMAIN}
+      - LETSENCRYPT_EMAIL=${LETSENCRYPT_EMAIL}
+    volumes:
+      - ${MY_DOCKER_DATA_DIR}/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - ${MY_DOCKER_DATA_DIR}/prometheus/alert.rules:/etc/prometheus/alert.rules
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+
+  prometheus-alertmanager:
+    container_name: prometheus-alertmanager
+    image: prom/alertmanager:latest
+    restart: always
+    environment:
+      - TZ=Europe/Oslo
+    networks:
+      - backend
+    volumes:
+      - ${MY_DOCKER_DATA_DIR}/prometheus/alertmanager.yml:/alertmanager.yml
+    command:
+      - '--config.file=/alertmanager.yml'
+
+  prometheus-node-exporter:
+    container_name: prometheus-node-exporter
+    image: prom/node-exporter:latest
+    restart: always
+    environment:
+      - TZ=Europe/Oslo
+    networks:
+      - backend
+
+  nginx-vts-exporter:
+    container_name: nginx-vts-exporter
+    image: sophos/nginx-vts-exporter
+    restart: always
+    networks:
+      - backend
+      - frontend
+    environment:
+      - TZ=Europe/Oslo
+      - NGINX_STATUS=http://nginx-vts-status/status/format/json
+
+  grafana:
+    container_name: grafana
+    image: grafana/grafana:latest
+    restart: always
+    depends_on:
+      - prometheus
+    networks:
+      - backend
+      - frontend
+    expose:
+      - "3000"
+    environment:
+      - TZ=Europe/Oslo
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD}
+      - VIRTUAL_HOST=${GRAFANA_DOMAIN}
+      - VIRTUAL_PORT=3000
+      - VIRTUAL_PROTO=http
+      - LETSENCRYPT_HOST=${GRAFANA_DOMAIN}
+      - LETSENCRYPT_EMAIL=${LETSENCRYPT_EMAIL}
+    volumes:
+      - grafana_data:/var/lib/grafana
 

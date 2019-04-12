@@ -24,7 +24,7 @@ Execute the following commands in order to use docker compose to manage containe
 PS! Use latest stable release: https://github.com/docker/compose/releases
 
 ## Necessary configurations
-The follwoing modifications need to be done on the host OS for Redis to work properly.
+The following modifications need to be done on the host OS for Redis to work properly.
 - append vm.overcommit_memory=1 to /etc/sysctl.conf
 - run following command as root on host: echo never > /sys/kernel/mm/transparent_hugepage/enabled
 - Note that Docker uses the PREROUTE chain in iptables, which shortcuts limitations put in the INPUT chain. Thus, do not publish ports in docker-compose.yml that aren't supposed to be public. If you're behind a NAT firewall/router, you're probably good, but if you're connected directly to the internet, beware!
@@ -36,6 +36,15 @@ Copy the folder my-config-templates to a suitable location on your host computer
 - cp -R <git-checkout-dir>/my-docker-data-template ~/my-docker-data
 
 Specify the full path to your config directory in the MY_DOCKER_DATA_DIR variable on the second line in the docker-compose .env-file
+
+## Clone external Git repositories
+- Clone the Docker Grav repository into this directory, and name it "grav":
+  - git clone https://github.com/getgrav/docker-grav.git grav
+- Clone the Nginx VTS repo
+  - git clone https://github.com/Parli/nginx-vts-docker.git nginx-vts
+  - Update two lines in the Dockerfile
+    - FROM alpine:3.5 >> FROM alpine:latest
+    - ENV NGINX_VERSION 1.15.2 >> ENV NGINX_VERSION 1.15.11
 
 ## Applications included in this stack
 - Owncloud (external, https)
@@ -80,16 +89,23 @@ Before running docker-compose up, initialize containers that need initializing:
 - Grav
   - You need to download the grav package and mount it to the grav container
     - cd ${MY_DOCKER_DATA_DIR} && git clone https://github.com/getgrav/grav.git grav
+    - This is the Grav source code. The previous grav checkout was a pre-configured Grav container build (also with source code incorporated, but this second check out of source code is going to be persistently stored and updated outside your container).
 
 You need to adjust Nginx-settings if you intend to use Owncloud with files bigger than 2 megabytes:
 - Read and rename the following file according to instructions:
-  - ~/my-docker-data/nginx/vhost.d/my.vhost.com
+  - ~/my-docker-data/nginx/vhost.d/owncloud.vhost.com
 
 You need to adjust Nginx-settings if you intend to set up a private docker registry:
 - Read and rename the following file according to instructions:
-  - ~/my-docker-data/nginx/vhost.d/docker.vhost.com
+  - ~/my-docker-data/nginx/vhost.d/registry.vhost.com
 - You also need to generate credentials for your private registry:
   - docker run --entrypoint htpasswd  registry:2 -Bbn <username> <password> > ~/my-docker-data/registry/auth/.htpasswd
+
+Prometheus is set up to run on a public IP.
+- Read and rename the following file according to instructions:
+  - ~/my-docker-data/nginx/vhost.d/prometheus.vhost.com
+- Read and do the following:
+  - ~/my-docker-data/nginx/auth/README
 
 docker-compose up -d
 - Remember to create admin user and password for portainer(!) Or else, it's first come-first served. The server shuts down after 5 minutes if you do not register an admin account within that timeframe.

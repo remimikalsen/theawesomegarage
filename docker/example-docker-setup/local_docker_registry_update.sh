@@ -28,12 +28,14 @@ REGISTRY_PASSWORD_FILE=
 # grep FROM ${BASE_DIR}/docker-setup/*/Dockerfile
 PULL_IMAGES=(
  "php:7.2-apache"
+ "alpine:latest"
 )
 
 # Directories under BASE_DIR that containt Dockerfiles to generate images from
 BUILD_IMAGES=(
- "dir1"
- "dir2"
+ "grav"
+ "simple-apache-php"
+ "nginx-vts"
 )
 
 
@@ -64,7 +66,7 @@ for IMAGE in "${BUILD_IMAGES[@]}"
   do
     MESSAGE="${MESSAGE}\n\n\n\nReport for image: ${IMAGE}"
 
-    RESULT=`/usr/bin/docker build -t grav ${BASE_DIR}/${IMAGE}/. 2>&1`
+    RESULT=`/usr/bin/docker build -t ${IMAGE} ${BASE_DIR}/${IMAGE}/. 2>&1`
     FAILED=$?
     if [ $FAILED != "0" ]
     then
@@ -74,7 +76,7 @@ for IMAGE in "${BUILD_IMAGES[@]}"
       MESSAGE="${MESSAGE}\n\nCompleted docker build after: ${ELAPSED}:\n${RESULT}"
     fi
 
-    RESULT=`/usr/bin/docker tag grav ${REGISTRY}/${IMAGE}:latest 2>&1`
+    RESULT=`/usr/bin/docker tag ${IMAGE} ${REGISTRY}/${IMAGE}:latest 2>&1`
     if [ $FAILED != "0" ]
     then
       FAULURE=1
