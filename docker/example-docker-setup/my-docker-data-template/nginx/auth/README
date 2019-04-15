@@ -4,5 +4,5 @@ Re-use the same setup for other public facing hosts you wish to secure.
 Run this command to generate a set of username+password for authentication with Nginx
 htpasswd -bn <username> <password> > .htpasswd
 
-You can also use the registry container to run the password, if you've pulled it:
+You can also use the registry container to create the password, if you've pulled it:
 docker run --rm --entrypoint htpasswd registry:2 -bn  <username> <password>> .htpasswd

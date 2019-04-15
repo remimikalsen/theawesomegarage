@@ -2,7 +2,7 @@
 # Author: Remi Mikalsen
 # The original script can be found in https://github.com/remimikalsen/theawesomegarage
 #
-# Pull base images, build, tag and push new images to private registry
+# Build, tag and push images to private registry
 # sudo crontab -e
 
 
@@ -17,18 +17,22 @@ HOST=
 RECIPIENT=
 
 # Base dir under which there are directories containing Dockerfiles 
-BASE_DIR=
+BASE_DIR=/your-dir
 
 # Private registry username and password
-REGISTRY=
+REGISTRY=local.repo.com
 REGISTRY_USERNAME=
-REGISTRY_PASSWORD_FILE=
+REGISTRY_PASSWORD_FILE=/path-to-file/.local_registry_password
 
 # Run following command to get an *idea* of what images ar used:
 # grep FROM ${BASE_DIR}/docker-setup/*/Dockerfile
 PULL_IMAGES=(
  "php:7.2-apache"
  "alpine:latest"
+ "golang:1"
+ "busybox"
+ "debian:stretch-slim"
+ "nextcloud:fpm"
 )
 
 # Directories under BASE_DIR that containt Dockerfiles to generate images from
@@ -36,6 +40,10 @@ BUILD_IMAGES=(
  "grav"
  "simple-apache-php"
  "nginx-vts"
+ "nginx-fpm"
+ "nextcloud-prometheus-exporter"
+ "nextcloud"
+ "smtp-relay"
 )
 
 

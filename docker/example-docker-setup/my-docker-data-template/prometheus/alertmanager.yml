@@ -7,9 +7,11 @@ route:
 receivers:
 - name: email-me
   email_configs:
-  - to: <some email address>
-    from: <your gmail address>
-    smarthost: smtp.gmail.com:587
-    auth_username: <your gmail address>
-    auth_identity: <your gmail address>
-    auth_password: <your gmail app password>
+  - to: <email-receiving-notifications>
+    from: <email-sending-notifications>
+    smarthost: smtp-relay:25
+    require_tls: false
+#    smarthost: smtp.gmail.com:587
+#    auth_username: <username>@gmail.com
+#    auth_identity: <username>@gmail.com
+#    auth_password: <password>

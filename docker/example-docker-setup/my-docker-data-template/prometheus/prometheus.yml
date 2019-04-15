@@ -16,7 +16,19 @@ scrape_configs:
         - targets: ['prometheus:9090']
     - job_name: 'prometheus-node-exporter'
       static_configs:
-        - targets: ['prometheus-node-exporter:9100']
+        - targets: ['172.17.0.1:9100']
     - job_name: 'nginx-vts-exporter:'
       static_configs:
         - targets: ['nginx-vts-exporter:9913']
+    - job_name: 'ouroboros-exporter:'
+      static_configs:
+        - targets: ['ouroboros:8000']
+    - job_name: 'nextcloud-vts-exporter:'
+      static_configs:
+        - targets: ['nextcloud-vts-exporter:9913']
+    - job_name: 'nextcloud'
+      static_configs:
+        - targets: ['nextcloud-prometheus-exporter:9205']
+    - job_name: 'cadvisor'
+      static_configs:
+        - targets: ['cadvisor:8080']
