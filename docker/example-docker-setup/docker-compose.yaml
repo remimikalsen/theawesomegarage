@@ -11,6 +11,8 @@ networks:
 volumes:
   nextcloud-db:
     driver: local
+  nextcloud-db-logs:
+    driver: local
   nextcloud-redis:
     driver: local
   nextcloud-html:
@@ -29,7 +31,10 @@ volumes:
     driver: local
   grafana_data:
     driver: local
-
+  elastic_data:
+    driver: local
+  filebeat_data:
+    driver: local
 
 services:
 
@@ -42,12 +47,15 @@ services:
       - backend
     volumes:
       - nextcloud-db:/var/lib/mysql
+      - nextcloud-db-logs:/var/log/mysql
     environment:
       - TZ=${DOCKER_TZ}
       - MYSQL_ROOT_PASSWORD=${NEXCLOUD_DB_ROOT_PASSWORD}
       - MYSQL_DATABASE=${NEXTCLOUD_DB_NAME}
       - MYSQL_USER=${NEXTCLOUD_DB_USER}
       - MYSQL_PASSWORD=${NEXTCLOUD_DB_PASSWORD}
+    labels:
+      co.elastic.logs/disable: false
 
   nextcloud-redis:
     container_name: nextcloud-redis
@@ -62,6 +70,8 @@ services:
       - backend
     volumes:
       - nextcloud-redis:/var/lib/redis
+    labels:
+      co.elastic.logs/disable: false
 
   nextcloud-app:
     container_name: nextcloud-app
@@ -86,6 +96,8 @@ services:
     volumes:
       - nextcloud-html:/var/www/html
       - ${MY_DOCKER_DATA_DIR}/nextcloud/data:/var/www/html/data
+    labels:
+      co.elastic.logs/disable: false
 
   nextcloud-web:
     container_name: nextcloud-web
@@ -109,6 +121,11 @@ services:
     volumes:
       - nextcloud-html:/var/www/html:ro
       - ${MY_DOCKER_DATA_DIR}/nextcloud/data:/var/www/html/data:ro
+    labels:
+      co.elastic.logs/disable: false
+      co.elastic.logs/module: nginx
+      co.elastic.logs/fileset.stdout: access
+      co.elastic.logs/fileset.stderr: error
 
   simple-apache-php:
     container_name: simple-apache-php
@@ -133,7 +150,11 @@ services:
       - frontend
     volumes:
       - ${MY_DOCKER_DATA_DIR}/simple-apache-php/src:/var/www/html
-
+    labels:
+      co.elastic.logs/disable: false
+      co.elastic.logs/module: apache
+      co.elastic.logs/fileset.stdout: access
+      co.elastic.logs/fileset.stderr: error
 
   nginx-redirect:
     container_name: nginx-redirect
@@ -152,6 +173,11 @@ services:
       - frontend
     volumes:
       - ${MY_DOCKER_DATA_DIR}/nginx-redirect/conf.d:/etc/nginx/conf.d
+    labels:
+      co.elastic.logs/disable: false
+      co.elastic.logs/module: nginx
+      co.elastic.logs/fileset.stdout: access
+      co.elastic.logs/fileset.stderr: error
 
   grav:
     container_name: grav
@@ -173,6 +199,11 @@ services:
       - ${MY_DOCKER_DATA_DIR}/grav:/var/www/html:cached
       - ${MY_DOCKER_DATA_DIR}/path-to-favicon.png:/var/www/html/user/themes/quark/images/favicon.png
       - ${MY_DOCKER_DATA_DIR}/path-to-logo.svg:/var/www/html/user/themes/quark/images/grav-logo.svg
+    labels:
+      co.elastic.logs/disable: false
+      co.elastic.logs/module: apache
+      co.elastic.logs/fileset.stdout: access
+      co.elastic.logs/fileset.stderr: error
 
   nginx:
     container_name: nginx
@@ -197,6 +228,11 @@ services:
       frontend:
         aliases:
           - nginx-vts-status  
+    labels:
+      co.elastic.logs/disable: false
+      co.elastic.logs/module: nginx
+      co.elastic.logs/fileset.stdout: access
+      co.elastic.logs/fileset.stderr: error
 
   nginx-gen:
     container_name: nginx-gen
@@ -215,6 +251,7 @@ services:
       - prometheus
       - nginx
       - nextcloud-web
+      - kibana
     entrypoint: /bin/sh -c
     command: ["/usr/local/bin/docker-gen -notify-sighup nginx -watch -wait 30s:60s /etc/docker-gen/templates/nginx.tmpl /etc/nginx/conf.d/default.conf"]
     networks:
@@ -226,6 +263,8 @@ services:
       - nginx-certs:/etc/nginx/certs:ro
       - /var/run/docker.sock:/tmp/docker.sock:ro
       - ${MY_DOCKER_DATA_DIR}/nginx-gen/templates/nginx.tmpl:/etc/docker-gen/templates/nginx.tmpl:ro
+    labels:
+      co.elastic.logs/disable: false
 
   nginx-ssl:
     container_name: nginx-ssl
@@ -247,6 +286,8 @@ services:
       - nginx-html:/usr/share/nginx/html
       - nginx-certs:/etc/nginx/certs:rw
       - /var/run/docker.sock:/var/run/docker.sock:ro
+    labels:
+      co.elastic.logs/disable: false
 
   portainer:
     container_name: portainer
@@ -265,6 +306,8 @@ services:
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - portainer-data:/data
+    labels:
+      co.elastic.logs/disable: false
 
   # Cadvisor should not be exposed openly externally because it has no auth-mechanism
   # Use predefined nginx vhost setting and create an auth-file for basic auth. See readme.
@@ -287,6 +330,8 @@ services:
       - /sys:/sys:ro
       - /var/lib/docker/:/var/lib/docker:ro
       - /dev/disk/:/dev/disk:ro
+    labels:
+      co.elastic.logs/disable: false
 
   openvpn-server:
     privileged: true
@@ -301,6 +346,8 @@ services:
     restart: always
     volumes:
      - ${MY_DOCKER_DATA_DIR}/openvpn-server/config:/etc/openvpn
+    labels:
+      co.elastic.logs/disable: false
 
   ouroboros:
     container_name: ouroboros
@@ -322,6 +369,8 @@ services:
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - $HOME/.docker/config.json:/root/.docker/config.json
+    labels:
+      co.elastic.logs/disable: false
 
   myregistry:
     container_name: myregistry
@@ -345,6 +394,8 @@ services:
       - ${MY_DOCKER_DATA_DIR}/registry/data:/var/lib/registry
       - nginx-certs:/certs
       - ${MY_DOCKER_DATA_DIR}/registry/auth:/auth
+    labels:
+      co.elastic.logs/disable: false
 
   prometheus:
     container_name: prometheus
@@ -368,6 +419,8 @@ services:
       - prometheus_data:/prometheus
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'
+    labels:
+      co.elastic.logs/disable: false
 
   prometheus-alertmanager:
     container_name: prometheus-alertmanager
@@ -383,6 +436,8 @@ services:
       - ${MY_DOCKER_DATA_DIR}/prometheus/alertmanager.yml:/alertmanager.yml
     command:
       - '--config.file=/alertmanager.yml'
+    labels:
+      co.elastic.logs/disable: false
 
   nginx-vts-exporter:
     container_name: nginx-vts-exporter
@@ -394,6 +449,8 @@ services:
     environment:
       - TZ=${DOCKER_TZ}
       - NGINX_STATUS=http://nginx-vts-status/status/format/json
+    labels:
+      co.elastic.logs/disable: false
 
   nextcloud-vts-exporter:
     container_name: nextcloud-vts-exporter
@@ -405,6 +462,8 @@ services:
     environment:
       - TZ=${DOCKER_TZ}
       - NGINX_STATUS=http://nextcloud-vts-status/status/format/json
+    labels:
+      co.elastic.logs/disable: false
 
   nextcloud-prometheus-exporter:
     container_name: nextcloud-prometheus-exporter
@@ -418,6 +477,8 @@ services:
       - NEXTCLOUD_SERVERINFO_URL=https://${NEXTCLOUD_DOMAIN}/ocs/v2.php/apps/serverinfo/api/v1/info
       - NEXTCLOUD_USERNAME=${NEXTCLOUD_ADMIN_USER}
       - NEXTCLOUD_PASSWORD=${NEXTCLOUD_ADMIN_PASSWORD}
+    labels:
+      co.elastic.logs/disable: false
 
   grafana:
     container_name: grafana
@@ -432,7 +493,13 @@ services:
       - "3000"
     environment:
       - TZ=${DOCKER_TZ}
+      - GF_SECURITY_ADMIN_USER=${GRAFANA_ADMIN_USER}
       - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD}
+      - GF_SMTP_ENABLED=true
+      - GF_SMTP_HOST=smtp-relay:25
+      - GF_SMTP_FROM_ADDRESS=${NOTIFICATION_EMAIL}
+      - GF_SERVER_DOMAIN=${GRAFANA_DOMAIN}
+      - GF_SERVER_ROOT_URL=${GRAFANA_ROOT_URL}
       - VIRTUAL_HOST=${GRAFANA_DOMAIN}
       - VIRTUAL_PORT=3000
       - VIRTUAL_PROTO=http
@@ -440,6 +507,8 @@ services:
       - LETSENCRYPT_EMAIL=${NOTIFICATION_EMAIL}
     volumes:
       - grafana_data:/var/lib/grafana
+    labels:
+      co.elastic.logs/disable: false
 
   smtp-relay:
     container_name: smtp-relay
@@ -454,3 +523,75 @@ services:
       - RELAY_PORT=587
       - RELAY_USERNAME=${GMAIL_USERNAME}@gmail.com
       - RELAY_PASSWORD=${GMAIL_PASSWORD}
+    labels:
+      co.elastic.logs/disable: false
+
+  kibana:
+    container_name: kibana
+    image: docker.elastic.co/kibana/kibana:7.0.0
+    networks:
+      - frontend
+      - backend
+    environment:
+      - TZ=${DOCKER_TZ}
+      - SERVER_NAME=${KIBANA_DOMAIN}
+      - SERVER_PORT=5601
+      - SERVER_HOST="0"
+      - ELASTICSEARCH_HOST=elasticsearch:9200
+      - VIRTUAL_HOST=${KIBANA_DOMAIN}
+      - VIRTUAL_PORT=5601
+      - VIRTUAL_PROTO=http
+      - LETSENCRYPT_HOST=${KIBANA_DOMAIN}
+      - LETSENCRYPT_EMAIL=${NOTIFICATION_EMAIL}
+    depends_on:
+      - elasticsearch
+    labels:
+      co.elastic.logs/disable: false
+      co.elastic.logs/module: kibana
+
+  elasticsearch:
+    container_name: elasticsearch
+    image: docker.elastic.co/elasticsearch/elasticsearch:7.0.0
+    networks:
+      - backend
+    environment:
+      - TZ=${DOCKER_TZ}
+      - cluster.name=docker-cluster
+      - bootstrap.memory_lock=true
+      - discovery.type=single-node
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    volumes:
+      - elastic_data:/usr/share/elasticsearch/data
+    labels:
+      co.elastic.logs/disable: false
+      co.elastic.logs/module: elasticsearch
+
+  filebeat:
+    container_name: filebeat
+    image: docker.elastic.co/beats/filebeat:7.0.0
+    user: root
+    networks:
+      - backend
+    volumes:
+      - ${MY_DOCKER_DATA_DIR}/filebeat/module/nginx/access/ingest/default.json:/usr/share/filebeat/module/nginx/access/ingest/default.json
+      - ${MY_DOCKER_DATA_DIR}/filebeat/module/apache/access/ingest/default.json:/usr/share/filebeat/module/apache/access/ingest/default.json
+      - ${MY_DOCKER_DATA_DIR}/filebeat/module/system/syslog/manifest.yml:/usr/share/filebeat/module/system/syslog/manifest.yml
+      - ${MY_DOCKER_DATA_DIR}/filebeat/module/system/auth/manifest.yml:/usr/share/filebeat/module/system/auth/manifest.yml
+      - ${MY_DOCKER_DATA_DIR}/filebeat/filebeat.yml:/usr/share/filebeat/filebeat.yml:ro
+      - filebeat_data:/usr/share/filebeat/data
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /var/lib/docker/containers/:/var/lib/docker/containers/:ro
+      - /var/log/:/var/log/:ro
+      - nextcloud-db-logs:/mnt/nextcloud-db-log:ro
+    environment:
+      - TZ=${DOCKER_TZ}
+      - ELASTICSEARCH_HOST=elasticsearch:9200
+      - KIBANA_HOST=kibana:5601
+    command: ["--strict.perms=false"]
+    labels:
+      co.elastic.logs/disable: false
+

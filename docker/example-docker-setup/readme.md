@@ -27,10 +27,35 @@ PS! Use latest stable release: https://github.com/docker/compose/releases
 The following modifications need to be done on the host OS for Redis to work properly.
 - append vm.overcommit_memory=1 to /etc/sysctl.conf
 - run following command as root on host: echo never > /sys/kernel/mm/transparent_hugepage/enabled
+- Also, create a file /etc/rc.local, run chmod +x on it and paste the following content into it:
+
+'''
+#!/bin/sh -e
+#
+# rc.local
+#
+# This script is executed at the end of each multiuser runlevel.
+# Make sure that the script will "exit 0" on success or any other
+# value on error.
+#
+# In order to enable or disable this script just change the execution
+# bits.
+#
+# By default this script does nothing.
+
+echo never > /sys/kernel/mm/transparent_hugepage/enabled
+
+exit 0
+
+'''
+
 - Note that Docker uses the PREROUTE chain in iptables, which shortcuts limitations put in the INPUT chain. Thus, do not publish ports in docker-compose.yml that aren't supposed to be public. If you're behind a NAT firewall/router, you're probably good, but if you're connected directly to the internet, beware!
+- Elasticsearch requires a fair amount of memory to run. Update:
+  - sysctl -w vm.max_map_count=262144 or even 393180 to allow for more memory allocation. [No harm done](https://www.suse.com/support/kb/doc/?id=7000830) if we consider it has the same effect on Ubuntu as it does on SUSE.
+  - edit /etc/sysctl.conf and append the keu+value there too, in order to persist the change
 
 ## Bind mounts
-The containers in this stack will need a place to store persistent data. It is recommended to put this data in a directory outside of the Git-checkout dir - simply to avoid adding and pushing sensitive data to remote repo by accident.
+The containers in this stack will need a place to store persistent data and mount pre-made configurations. It is recommended to put this data in a directory outside of the Git-checkout dir - simply to avoid adding and pushing sensitive data to remote repo by accident.
 
 Copy the folder my-config-templates to a suitable location on your host computer. E.g.
 - cp -R <git-checkout-dir>/my-docker-data-template ~/my-docker-data
@@ -47,29 +72,36 @@ Specify the full path to your config directory in the MY_DOCKER_DATA_DIR variabl
     - ENV NGINX_VERSION 1.15.2 >> ENV NGINX_VERSION 1.15.11
 
 ## Applications included in this stack
-- Owncloud (external, https)
-  - Owncloud http
-  - Owncloud db
-  - Owncloud redis
-- Basic Apache server with PHP support (external, https)
+- Nextcloud - consisting of several containers
+  - Nextcloud app (php-fpm based)
+  - Nextcloud db (MariaDB/MySQL based)
+  - Nextcloud redis
+- Basic example Apache server with PHP support (external, https)
 - Portainer (external, https)
 - Cadvisor (port 8080, http)
 - Nginx
   - Automatic vhost generator
   - Automatic Letsencrypt certs
 - Nginx upstream server for executing redirects
-- OpenVPN
-  - An OpenVPN server
-- Montitoring and logging
-  - Sematext monitoring agent
-  - Sematext log agent
-- Grav
+- OpenVPN server
+- Montitoring
+  - Prometheus
+  - Grafana
+  - Alertmanager
+  - Prometheus exporters
+- Logging
+  - Elasticsearch
+  - Kibana
+  - Filebeat
+- Grav CMS
   - Grav is a no database flat file CMS system. The grav image enables you to [create a self hosted web page](https://theawesomegarage.com/blog/my-first-blog-post).
 - Ouroboros
   - Outorobos is a tool for automatically updating and deploying updates to your containers
 - Docker registry
   - A docker registry lets you push your own base images based upon custom builds with Docker files
   - The registry is set up to be private, and proxied by NginX without size limitations on the resulting images
+- SMTP relay
+  - A container that connects to GMail that can serve as a host wide e-mail relay
 
 ## Installation
 Before running docker-compose up, initialize containers that need initializing:
@@ -107,8 +139,18 @@ Prometheus is set up to run on a public IP.
 - Read and do the following:
   - ~/my-docker-data/nginx/auth/README
 
+Elasticsearch and Kibana needs to be set up by Filebeat. Comment filebeat out of the docker-compose.yml before laynching for the first time.
+
 docker-compose up -d
 - Remember to create admin user and password for portainer(!) Or else, it's first come-first served. The server shuts down after 5 minutes if you do not register an admin account within that timeframe.
+
+Now, execute the following filebeat commands:
+- docker-compose run filebeat setup --template
+- docker-compose run filebeat setup -e
+- the last one can take a while!
+
+Now, uncomment filebeat in the docker-compose file and:
+- docker compose up -d
 
 Cache your docker credentials by logging in to your private docker repository - making them available to Ouroboros
  - docker login -u<username> -p<password> your.docker.vhost.com
@@ -121,14 +163,16 @@ In order to restore a corrupt system, you are mostly good with backing up the my
 1) Make sure you have have the docker files: git clone https://github.com/remimikalsen/theawesomegarage.git docker-setup
 2) Make sure you have done the necessary configurations in docker-setup/.env
 3) Restore the my-docker-data directory and make sure your .env file points to this data directory
-4) Run docker-compose up -d from within the docker-setup directory
+4) Run docker-compose up -d from within the docker-setup directory, but remember to keep filebeat down until youve run the two setup commands.
 
 ## Housekeeping
-In general, you want to be warned when something goes wrong. Set up Postfix to send you important e-mails on cron jobs etc.
+In general, you want to be warned when something goes wrong on your host system. Set up Postfix to send you important e-mails on cron jobs etc.
 - Check out this article: https://www.linode.com/docs/email/postfix/configure-postfix-to-send-mail-using-gmail-and-google-apps-on-debian-or-ubuntu/
-- After you have an MTA installed, remember to rediret local mail sent to root, www-data, etc. to an inbox you check daily:
+- After you have an MTA installed on your host, remember to rediret local mail sent to root, www-data, etc. to an inbox you check daily:
   - sudo vi /etc/aliases
   - sudo newaliases
+
+For sending e-mails from your Docker containers, use the shipped smtp-relay container.
 
 In order to keep the host system updated, I suggest installing apticron:
 - sudo apt-get install apticron
@@ -150,6 +194,9 @@ However, I came across a case that tempted me to do some hacking. I have a web p
 With this setup, I gain super easy SSL-certificates for my redirect domains, consistent logging and it's much easier to detect where in the pipe errors arise. And last, but not the least, the configuration for my upstream redirect server is super-easy and doesn't mess with my nginx, nginx-gen, nginx-ssl setup. And actually, I have come to learn that more people recommend this pattern.
 
 ## Info about Prometheus and Grafana
+On my TODO-list.
+
+## Info about Elasticseach, Kibana and Filebeat
 On my TODO-list.
 
 ## Known problems

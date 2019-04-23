@@ -1,0 +1,38 @@
+filebeat.config:
+  modules:
+    path: ${path.config}/modules.d/*.yml
+    reload.enabled: true
+
+filebeat.modules:
+- module: nginx
+- module: apache
+- module: redis
+- module: system
+- module: mysql
+- module: elasticsearch
+- module: kibana
+
+filebeat.autodiscover:
+  providers:
+    - type: docker
+      hints.enabled: true
+      templates:
+        - condition.contains:
+            docker.container.name: nextcloud-db 
+          config:
+            - module: mysql
+              error:
+                enabled: false
+              slowlog:
+                enabled: true
+                var.paths:
+                  - "/mnt/nextcloud-db-log/mariadb-slow.log"
+
+output.elasticsearch:
+  hosts: 'elasticsearch:9200'
+#  pipeline: geoip-info
+
+setup.template.overwrite: true
+
+setup.kibana:
+  host: "kibana:5601"
