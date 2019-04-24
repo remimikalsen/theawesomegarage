@@ -215,6 +215,7 @@ services:
     volumes:
       - nginx-conf:/etc/nginx/conf.d
       - ${MY_DOCKER_DATA_DIR}/nginx/vhost.d:/etc/nginx/vhost.d
+      - ${MY_DOCKER_DATA_DIR}/nginx/nginx.conf:/etc/nginx/nginx.conf
       - nginx-html:/usr/share/nginx/html
       - nginx-certs:/etc/nginx/certs:ro
       - nginx-logs:/var/log/nginx

@@ -29,7 +29,7 @@ The following modifications need to be done on the host OS for Redis to work pro
 - run following command as root on host: echo never > /sys/kernel/mm/transparent_hugepage/enabled
 - Also, create a file /etc/rc.local, run chmod +x on it and paste the following content into it:
 
-'''
+```
 #!/bin/sh -e
 #
 # rc.local
@@ -47,7 +47,7 @@ echo never > /sys/kernel/mm/transparent_hugepage/enabled
 
 exit 0
 
-'''
+```
 
 - Note that Docker uses the PREROUTE chain in iptables, which shortcuts limitations put in the INPUT chain. Thus, do not publish ports in docker-compose.yml that aren't supposed to be public. If you're behind a NAT firewall/router, you're probably good, but if you're connected directly to the internet, beware!
 - Elasticsearch requires a fair amount of memory to run. Update:
@@ -70,47 +70,8 @@ Specify the full path to your config directory in the MY_DOCKER_DATA_DIR variabl
   - Update two lines in the Dockerfile
     - FROM alpine:3.5 >> FROM alpine:latest
     - ENV NGINX_VERSION 1.15.2 >> ENV NGINX_VERSION 1.15.11
-  - Add the following to the beginning of the http section of the nginx.conf file
+  - As a side note, the nginx.conf is overridden in docker-compose.yml.
 
-'''
-    # Rate limiting setup
-    # https://www.nginx.com/blog/rate-limiting-nginx/
-    # Enable rate limiting on vhost level e.g.
-    #
-    #    location / {
-    #        # First limit_req
-    #        #  - allows bursts of up to 25 instantaneous requests per IP
-    #        #  - delays every request after 20 to be served within the 10r/s rate
-    #        #  - requests above 25 that don't fit into an imaginary 10r/s moving time windows are rejected with 503
-    #        # Second limit_req
-    #        #  - allows bursts of up to 75 instantaneous requests per whitelisted IP (geo $limit)
-    #        #  - after bursting 75, connection is limited to 50r/s
-    #        limit_req zone=medium burst=25 delay=20;
-    #        limit_req zone=really_many burst=75 nodelay;
-    #        proxy_pass http://website;
-    #    }
-    #
-    geo $limit {
-        default 1;
-        # Whitelist, ip-range maps to zero
-        10.0.0.0/8 0;
-        172.0.0.0/8 0;
-        192.168.1.0/24 0;
-    }
-
-    map $limit $limit_key {
-        0 "";
-        1 $binary_remote_addr;
-    }
-
-    # Limited zones for external IPs
-    limit_req_zone $limit_key zone=many:10m rate=25r/s;
-    limit_req_zone $limit_key zone=medium:10m rate=10r/s;
-    limit_req_zone $limit_key zone=few:10m rate=3r/s;
-
-    # Much opener zone for internal/whitelisted IPs
-    limit_req_zone $binary_remote_addr zone=really_many:10m rate=50r/s;
-'''
 
 ## Applications included in this stack
 - Nextcloud - consisting of several containers
@@ -164,9 +125,10 @@ Before running docker-compose up, initialize containers that need initializing:
     - cd ${MY_DOCKER_DATA_DIR} && git clone https://github.com/getgrav/grav.git grav
     - This is the Grav source code. The previous grav checkout was a pre-configured Grav container build (also with source code incorporated, but this second check out of source code is going to be persistently stored and updated outside your container).
 
-You need to adjust Nginx-settings if you intend to use Owncloud with files bigger than 2 megabytes:
+You need to adjust Nginx-settings if you intend to use Nextcloud with files bigger than 2 megabytes:
 - Read and rename the following file according to instructions:
-  - ~/my-docker-data/nginx/vhost.d/owncloud.vhost.com
+  - ~/my-docker-data/nginx/vhost.d/nextcloud.vhost.com
+  - Also note rate limits. See the shipped nginx.conf for details.
 
 You need to adjust Nginx-settings if you intend to set up a private docker registry:
 - Read and rename the following file according to instructions:
@@ -179,6 +141,12 @@ Prometheus is set up to run on a public IP.
   - ~/my-docker-data/nginx/vhost.d/prometheus.vhost.com
 - Read and do the following:
   - ~/my-docker-data/nginx/auth/README
+
+Kibana and Grafana needs higher rate limits on Nginx.
+- Read and rename the following file according to instructions:
+  - ~/my-docker-data/nginx/vhost.d/kibana.vhost.com
+  - ~/my-docker-data/nginx/vhost.d/grafana.vhost.com
+
 
 Elasticsearch and Kibana needs to be set up by Filebeat. Comment filebeat out of the docker-compose.yml before laynching for the first time.
 
@@ -228,7 +196,7 @@ In order to update all your docker containers regularly, you can either do monit
 Of course, this blind update method will impact uptime (although very slightly) and eventually it will break your setup (because eventually, some latest tag will introduce changes that are incompatible with your rig). The script attempts to send you emails both when errors occur and to report success. If you use the Ouroboros + Docker registry rig [included in this setup](https://theawesomegarage.com/blog/updating-your-docker-containers-automatically-v2), you don't need other automatic update mechanisms for your containers.
 
 ## Nginx container for redirects
-I love that my front-end Nginx-container vhosts and certificates are automatically configured by the nginx-gen and nginx-ssl containers. If I really, really need to tweak a vhost configuration, it better be some critical setting regarding one of the already existing vhosts (as was the case with the max body size on Owncloud).
+I love that my front-end Nginx-container vhosts and certificates are automatically configured by the nginx-gen and nginx-ssl containers. If I really, really need to tweak a vhost configuration, it better be some critical setting regarding one of the already existing vhosts (as was the case with the max body size on Nextcloud).
 
 However, I came across a case that tempted me to do some hacking. I have a web page hosted on Wordpress.org: https://remimikalsen.com. On Wordpress it costs money to map domains to your account, and it so happens that I also own a short hand domain, remim.com, that I also wanted to point to my Wordpress site. My initial thought was to let my existing Nginx container handle the redirect. However, I soon realied that would become a mess. Instead I set up an upstream Nginx-server that my front end Nginx talks to.
 
@@ -256,10 +224,4 @@ down /etc/openvpn/scripts/update-systemd-resolved
 
 Note! If you already have a script-security section, place up and down in that section
 Note2! If you already have up and down definitions, comment the old ones out and use the aforementioned definitions.
-
-### Owncloud sync fails and client reports 413 Request Entity Too Large
-This happens because the official Owncloud docker image is set up to accept file uploads of 20G. However, Nginx will by defauly only allow body sizes (uploads/downloads) of 2M. The best way to resolve this is to specify to Nginx that Owncloud needs bigger body sizes. You can do this by adding a file to the /etc/nginx/vhost.d/ directory, named after the vhost Owncloud runs on. In theawesomegarage, this is fixed by renaming a single pre-defined file:
-- On the host, read and rename the following file according to your vhost setup:
-  - ~/my-docker-data/nginx/vhost.d/my.vhost.com
-
-Note! If you need to specify other Nginx-configurations per vhost, this is the easiest way to go about it. Restart the nginx-container after making changes.
+Note 3! If you need to specify other Nginx-configurations per vhost, this is the easiest way to go about it. Restart the nginx-container after making changes.
