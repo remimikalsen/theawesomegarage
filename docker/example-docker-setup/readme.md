@@ -70,6 +70,47 @@ Specify the full path to your config directory in the MY_DOCKER_DATA_DIR variabl
   - Update two lines in the Dockerfile
     - FROM alpine:3.5 >> FROM alpine:latest
     - ENV NGINX_VERSION 1.15.2 >> ENV NGINX_VERSION 1.15.11
+  - Add the following to the beginning of the http section of the nginx.conf file
+
+'''
+    # Rate limiting setup
+    # https://www.nginx.com/blog/rate-limiting-nginx/
+    # Enable rate limiting on vhost level e.g.
+    #
+    #    location / {
+    #        # First limit_req
+    #        #  - allows bursts of up to 25 instantaneous requests per IP
+    #        #  - delays every request after 20 to be served within the 10r/s rate
+    #        #  - requests above 25 that don't fit into an imaginary 10r/s moving time windows are rejected with 503
+    #        # Second limit_req
+    #        #  - allows bursts of up to 75 instantaneous requests per whitelisted IP (geo $limit)
+    #        #  - after bursting 75, connection is limited to 50r/s
+    #        limit_req zone=medium burst=25 delay=20;
+    #        limit_req zone=really_many burst=75 nodelay;
+    #        proxy_pass http://website;
+    #    }
+    #
+    geo $limit {
+        default 1;
+        # Whitelist, ip-range maps to zero
+        10.0.0.0/8 0;
+        172.0.0.0/8 0;
+        192.168.1.0/24 0;
+    }
+
+    map $limit $limit_key {
+        0 "";
+        1 $binary_remote_addr;
+    }
+
+    # Limited zones for external IPs
+    limit_req_zone $limit_key zone=many:10m rate=25r/s;
+    limit_req_zone $limit_key zone=medium:10m rate=10r/s;
+    limit_req_zone $limit_key zone=few:10m rate=3r/s;
+
+    # Much opener zone for internal/whitelisted IPs
+    limit_req_zone $binary_remote_addr zone=really_many:10m rate=50r/s;
+'''
 
 ## Applications included in this stack
 - Nextcloud - consisting of several containers
