@@ -74,7 +74,7 @@ include /etc/nginx/proxy.conf;
 {{ else }}
 # HTTP 1.1 support
 proxy_http_version 1.1;
-proxy_buffering off;
+#proxy_buffering off;
 proxy_set_header Host $http_host;
 proxy_set_header Upgrade $http_upgrade;
 proxy_set_header Connection $proxy_connection;
@@ -286,12 +286,23 @@ server {
 	include /etc/nginx/vhost.d/default;
 	{{ end }}
 
+        # Limiting bandwidth - map defined in nginx conf
+        set $limit_rate $get_rate;
+
 	location / {
 
-                # Se nginx.conf for details
-                # In some cases, e.g. /login, these limits should be overriden in vhosts.d
-                limit_req zone=medium burst=25 delay=20;
-                limit_req zone=really_many burst=75 nodelay;
+                # Hosts that we do not want brute forcing on...
+                {{ if or (eq $host "cadvisor.vhost.com") (eq $host "docker.vhost.com") (eq $host "prometheus.vhost.com") (eq $host "kibana.vhost.com") }}
+                limit_req zone=credentials_ip burst=6 nodelay;
+                limit_req zone=whitelisted_ip burst=500 nodelay;
+                limit_req zone=credentials_uri burst=60 nodelay;
+
+                # Regular hosts
+                {{ else }} 
+                limit_req zone=regular_ip burst=30 nodelay;
+                limit_req zone=whitelisted_ip burst=500 nodelay;
+                limit_req zone=regular_uri burst=100 nodelay;        
+                {{ end }}
 
 		{{ if eq $proto "uwsgi" }}
 		include uwsgi_params;
@@ -340,11 +351,6 @@ server {
 	{{ end }}
 
 	location / {
-
-                # Se nginx.conf for details
-                # In some cases, e.g. /login, these limits should be overriden in vhosts.d
-                limit_req zone=medium burst=25 delay=20;
-                limit_req zone=really_many burst=75 nodelay;
 
 		{{ if eq $proto "uwsgi" }}
 		include uwsgi_params;
