@@ -5,6 +5,8 @@ networks:
     name: frontend
   backend:
     name: backend
+  email:
+    name: email
   default:
     name: frontend
 
@@ -79,6 +81,8 @@ services:
     #image: local.repo.com/nextcloud:latest
     networks:
       - backend
+      - frontend
+      - email
     restart: always
     depends_on:
       - nextcloud-db
@@ -195,6 +199,7 @@ services:
       - LETSENCRYPT_EMAIL=${NOTIFICATION_EMAIL}
     networks:
       - frontend
+      - email
     volumes:
       - ${MY_DOCKER_DATA_DIR}/grav:/var/www/html:cached
       - ${MY_DOCKER_DATA_DIR}/path-to-favicon.png:/var/www/html/user/themes/quark/images/favicon.png
@@ -431,6 +436,7 @@ services:
       - TZ=${DOCKER_TZ}
     networks:
       - backend
+      - email
     #expose:
     #  - "9093"
     volumes:
@@ -488,8 +494,8 @@ services:
     depends_on:
       - prometheus
     networks:
-      - backend
       - frontend
+      - email
     expose:
       - "3000"
     environment:
@@ -517,7 +523,7 @@ services:
     #image: local.repo.com/smtp-relay:latest
     restart: always
     networks: 
-      - backend
+      - email
     environment:
       - TZ=${DOCKER_TZ}
       - RELAY_HOST=smtp.gmail.com
@@ -530,6 +536,7 @@ services:
   kibana:
     container_name: kibana
     image: docker.elastic.co/kibana/kibana:7.0.0
+    restart: always
     networks:
       - frontend
       - backend
@@ -553,6 +560,7 @@ services:
   elasticsearch:
     container_name: elasticsearch
     image: docker.elastic.co/elasticsearch/elasticsearch:7.0.0
+    restart: always
     networks:
       - backend
     environment:
@@ -574,6 +582,7 @@ services:
   filebeat:
     container_name: filebeat
     image: docker.elastic.co/beats/filebeat:7.0.0
+    restart: always
     user: root
     networks:
       - backend

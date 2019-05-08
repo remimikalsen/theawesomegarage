@@ -1,6 +1,6 @@
 # alertmanager.yml
 route:
-  group_by: [Alertname]
+  group_by: [alertname]
   # Send all notifications to me.
   receiver: email-me
 

@@ -3,13 +3,16 @@ global:
     scrape_interval: 5s
     external_labels:
         monitor: 'my-monitor'
+
 rule_files:
     - 'alert.rules'
+
 alerting:
   alertmanagers:
   - static_configs:
     - targets:
       - prometheus-alertmanager:9093
+
 scrape_configs:
     - job_name: 'prometheus'
       static_configs:
