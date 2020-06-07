@@ -1,0 +1,356 @@
+body {
+  font: 1em "Century Gothic", Futura, sans-serif;
+  margin: 20px;
+  text-align: center;
+}
+
+h1 {
+  margin-bottom: 0;
+}
+
+p.slogan {
+  margin-top: 0;
+  margin-bottom: 0;
+}
+
+
+ol, ul {
+  padding-left: 30px;
+}
+
+.board-row {
+  white-space: nowrap;
+  margin: 0;
+  margin-bottom: -1px;
+  line-height: 0;
+}
+
+.board-row:after {
+  clear: both;
+  content: "";
+  display: table;
+}
+
+.status {
+  text-align: center;
+  margin-bottom: 5px;
+  color: hsl(0, 0%, 15%);
+  line-height: 30px;
+}
+
+.status svg {
+  font-size: 1.4em;
+}
+
+.square {
+  display: inline-block;
+  border: 1px solid #999;
+  margin: 0;
+  padding: 0;
+  margin-right: -2px;
+}
+
+.square > button {
+  background: #fff;
+  border: 0;
+  font-size: 40px;
+  font-weight: bold;
+  line-height: 60px;
+  height: 60px;
+  padding: 0;
+  text-align: center;
+  width: 60px;
+  float: left;
+  outline: none;
+  color: hsl(0, 0%, 15%);
+}
+
+.square:focus {
+  outline: none;
+}
+
+.kbd-navigation .square:focus {
+  background: #ddd;
+}
+
+.game {
+  /*display: flex;*/
+  /*flex-direction: row;*/
+  text-align: center;
+  display: inline-block;
+}
+
+.game-rules {
+  text-align: left;
+  margin-top: 32px;
+}
+
+.game-rules p {
+  font-weight: bold;
+  margin-bottom: 5px;
+}
+
+.game-tools {
+  /*margin-top: 32px;
+  margin-left: -5px;
+  margin-right: 20px;
+  width: 200px;*/
+  margin: 15px auto;
+  vertical-align: top;
+}
+
+.game-tools ul {
+  list-style-type: none;
+  font-size: 1em;
+  padding: 0;
+  margin-bottom: 0;
+  margin-top: 0;
+}
+
+.game-tools ul li,
+div.game-rules ul.setup li {
+  padding: 5px;
+}
+
+
+
+.game-tools ul li button,
+div.game-rules button {
+  background-color: white; 
+  border: 1px solid hsl(0,0%,80%);
+  border-radius: 6px;
+  color: hsl(0,0%,20%);
+  padding: 8px 10px;
+  text-align: left;
+  text-decoration: none;
+  display: inline-block;
+  cursor: pointer;
+  margin-bottom: 0px;
+  font-size: 1em;
+  width: 190px;
+}
+
+.game-tools ul li button {
+  margin-top: 15px;
+  background-color: #29cd79;
+  color: black;
+}
+
+.game-tools ul li button svg,
+div.game-rules button svg {
+  font-size: 1.2em;
+  float: right;
+}
+
+div.game-rules button {
+  background-color: #dc301b;
+  color: white;  
+}
+
+
+#undoButton,
+#redoButton {
+  background-color: white; 
+  border: 1px solid hsl(0,0%,80%);
+  border-radius: 4px;
+  color: hsl(0,0%,20%);
+  text-align: center;
+  vertical-align: top;
+  text-decoration: none; 
+  cursor: pointer;
+  font-size: 1.2em;
+  position: relative;
+  height: 38px;
+  line-height: 38px;
+  display: inline-block;
+}
+
+#undoButton:disabled,
+#redoButton:disabled {
+  color: hsl(0,0%,80%);
+}
+
+#jumpToSelect {
+  vertical-align: top;
+  width: 130px;
+  height: 38px;
+  display: inline-block;
+  margin-left: 8px;
+  margin-right: 8px;
+  cursor: pointer;
+}
+
+div.game-rules {
+  text-align: center;
+}
+
+.game-rules ul {
+  margin-top: 10px;
+  padding-top: 0;
+  margin-bottom: 20px;
+  text-align: left;
+}
+
+.game-board {
+  margin-top: 20px;
+  /*margin-right: 25px;*/
+  text-align: center;
+}
+
+.alreadyPlayed:hover {
+	color: #808080;
+}
+
+.square > button.winner,
+div.status > div > span.winner {
+    color: #FFD700;
+	color: #DAA520;
+}
+
+div.status > div > span.winner {
+    font-size: 0.7em;
+}
+
+div.status > div > span.player {
+    padding-left: 5px;
+	padding-right: 5px;
+}
+
+div.setup {
+  text-align: left;
+}
+
+div.setup label {
+  margin-top: 20px;
+  display: block;
+}
+
+div.setup button {
+  margin-top: 25px;
+  background-color: #29cd79; 
+  border: 1px solid hsl(0,0%,80%);
+  border-radius: 10px;
+  color: hsl(0,0%,20%);
+  color: black;
+  padding: 10px 20px;
+  text-align: center;
+  text-decoration: none;
+  display: inline-block;
+  font-size: 1.5em;
+  cursor: pointer;
+}
+
+div.board-container {
+  padding: 0;
+  margin: 0 auto;
+}
+
+
+div.trophy {
+  position: absolute;
+  z-index: 1000;
+  left: 0;
+  top: 0;
+  opacity: .7;
+  width: 100%;
+  height: 100%;
+  background-color: red;
+  color: #FFD700;
+  font-size: 8em;
+  text-align: center;
+}
+
+div.trophy svg {
+  position: relative;
+  /*top: 20%;
+  transform: translateY(-20%);*/
+  top: 150px;
+}
+
+div.trophy.fadeTrophy { 
+/*
+  transition: visibility 0s 2s, opacity 2s ease-out;
+  transition-delay: 1s;
+  visibility: hidden;
+  opacity: 0;*/
+	filter: alpha(opacity=0);
+	opacity: 0;
+	visibility: hidden;
+	-webkit-transition: visibility 0s 2s, opacity 2s ease-in-out;
+	-moz-transition: visibility 0s 2s, opacity 2s ease-in-out;
+	-ms-transition: visibility 0s 2s, opacity 2s ease-in-out;
+	-o-transition: visibility 0s 2s, opacity 2s ease-in-out;
+	transition: visibility 0s 2s, opacity 2s ease-in-out;  
+}
+
+
+div.playerIconSetup {
+  margin-left: 5px;
+  margin-top: 7px;
+  vertical-align: top;
+}
+
+div.playerIconSetup div.playerNumber {
+  padding-right: 5px;
+  font-style: italic;
+  display: inline-block;
+  vertical-align: top;
+  padding-top: 12px;
+}
+
+div.playerIconSetup div.iconSelector {
+  display: inline-block;
+  margin-top: 5px;
+  width: 190px;
+}
+
+div.iconSelector button {
+  background: white; 
+  border: 1px solid hsl(0,0%,80%);
+  border-radius: 3px;
+  padding: 2px 3px;
+  text-align: center;
+  text-decoration: none;
+  font-size: 1.3em;
+  margin-left: 5px;
+  margin-top: 0;
+  margin-bottom: 5px;
+  width: 35px;
+  height: 30px;
+  cursor: default;
+}
+
+div.iconSelector button svg {
+  color: #c0c0c0;
+}
+
+div.iconSelector button.mine svg {
+  color: black;
+  transition: all 1s ease-in;
+}
+
+div.iconSelector button.change:hover svg {
+  color: red;
+  cursor: pointer;
+  
+}
+div.iconSelector button.change:focus svg {
+  color: #c0c0c0;
+  transition: all .5s linear;
+}
+div.iconSelector button.change:focus {
+  outline: none;  
+}
+div.iconSelector button.mine:focus {
+  outline: none;  
+}
+
+div.startButton {
+  display: inline-block;
+  width: 100%;
+  text-align: center;
+}
+
+span.startButton button {
+  display: inline-block;
+}
