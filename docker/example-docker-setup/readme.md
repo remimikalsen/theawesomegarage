@@ -147,6 +147,9 @@ Kibana and Grafana needs higher rate limits on Nginx.
   - ~/my-docker-data/nginx/vhost.d/kibana.vhost.com
   - ~/my-docker-data/nginx/vhost.d/grafana.vhost.com
 
+Nextcloud runs behind a proxy. You may need to tell it to force https links, for example for correct sharing from Windows
+ - docker exec -u www-data -it nextcloud-app /bin/bash
+ - php /var/www/html/occ config:system:set overwriteprotocol --value=https
 
 Elasticsearch and Kibana needs to be set up by Filebeat. Comment filebeat out of the docker-compose.yml before laynching for the first time.
 

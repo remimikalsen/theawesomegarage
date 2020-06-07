@@ -8,11 +8,6 @@ location ^~ /.well-known/acme-challenge/ {
     break;
 }
 ## End of configuration add by letsencrypt container
-client_max_body_size 20G;
+client_max_body_size 0;
+chunked_transfer_encoding on;
 
-location ~ ^/(?!(login)) {
-  limit_req zone=dashboard_ip burst=150 nodelay;
-  limit_req zone=whitelisted_ip burst=500 nodelay;
-  limit_req zone=credentials_uri burst=60 nodelay;
-  proxy_pass http://next.vhost.com;
-}

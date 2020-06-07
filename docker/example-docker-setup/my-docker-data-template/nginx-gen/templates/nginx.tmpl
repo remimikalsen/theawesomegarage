@@ -158,7 +158,7 @@ upstream {{ $upstream_name }} {
 				{{ end }}
 			{{ else }}
 				# Cannot connect to network of this container
-				server 127.0.0.1 down;
+				#server 127.0.0.1 down;
 			{{ end }}
 		{{ end }}
 	{{ end }}
@@ -292,7 +292,7 @@ server {
 	location / {
 
                 # Hosts that we do not want brute forcing on...
-                {{ if or (eq $host "cadvisor.vhost.com") (eq $host "docker.vhost.com") (eq $host "prometheus.vhost.com") (eq $host "kibana.vhost.com") }}
+                {{ if or (eq $host "cadvisor.remim.com") (eq $host "docker.remim.com") (eq $host "prometheus.remim.com") (eq $host "kibana.remim.com") }}
                 limit_req zone=credentials_ip burst=6 nodelay;
                 limit_req zone=whitelisted_ip burst=500 nodelay;
                 limit_req zone=credentials_uri burst=60 nodelay;

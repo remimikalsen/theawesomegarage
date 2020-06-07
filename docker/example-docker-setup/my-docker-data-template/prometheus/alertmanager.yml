@@ -7,8 +7,8 @@ route:
 receivers:
 - name: email-me
   email_configs:
-  - to: <email-receiving-notifications>
-    from: <email-sending-notifications>
+  - to: emailto
+    from: emailfrom
     smarthost: smtp-relay:25
     require_tls: false
 #    smarthost: smtp.gmail.com:587

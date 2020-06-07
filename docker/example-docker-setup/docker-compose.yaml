@@ -7,6 +7,11 @@ networks:
     name: backend
   email:
     name: email
+  openvpn:
+    name: openvpn
+    ipam:
+      config: 
+       - subnet: 172.72.72.0/30
   default:
     name: frontend
 
@@ -37,6 +42,17 @@ volumes:
     driver: local
   filebeat_data:
     driver: local
+  photoshow-config:
+    driver: local
+  photoshow-thumbs:
+    driver: local
+  passbolt_db:
+    driver: local
+  passbolt_gpg:
+    driver: local
+  passbolt_images:
+    driver: local
+
 
 services:
 
@@ -77,11 +93,11 @@ services:
 
   nextcloud-app:
     container_name: nextcloud-app
-    build: ./nextcloud/.
-    #image: local.repo.com/nextcloud:latest
+    #build: ./nextcloud/.
+    image: docker.remim.com/nextcloud:latest
     networks:
-      - backend
       - frontend
+      - backend
       - email
     restart: always
     depends_on:
@@ -95,6 +111,7 @@ services:
       - NEXTCLOUD_ADMIN_USER=${NEXTCLOUD_ADMIN_USER}
       - NEXTCLOUD_ADMIN_PASSWORD=${NEXTCLOUD_ADMIN_PASSWORD}
       - NEXTCLOUD_TRUSTED_DOMAINS=${NEXTCLOUD_DOMAIN}
+      - NEXTCLOUD_OVERWRITEPROTOCOL=https
       - REDIS_HOST=nextcloud-redis
       - REDIS_HOST_PORT=6379
     volumes:
@@ -102,11 +119,14 @@ services:
       - ${MY_DOCKER_DATA_DIR}/nextcloud/data:/var/www/html/data
     labels:
       co.elastic.logs/disable: false
+      co.elastic.logs/module: php-fpm
+      co.elastic.logs/fileset.stdout: logs
+      co.elastic.logs/fileset.stderr: logs
 
   nextcloud-web:
     container_name: nextcloud-web
-    build: ./nginx-fpm/.
-    #image: local.repo.com/nginx-fpm:latest
+    #build: ./nginx-fpm/.
+    image: docker.remim.com/nginx-fpm:latest
     networks:
       backend:
       frontend:
@@ -133,8 +153,8 @@ services:
 
   simple-apache-php:
     container_name: simple-apache-php
-    build: ./simple-apache-php/.
-    #image: local.repo.com/simple-apache-php:latest
+    #build: ./simple-apache-php/.
+    image: docker.remim.com/simple-apache-php:latest
     restart: always
     expose:
       - "80"
@@ -185,8 +205,8 @@ services:
 
   grav:
     container_name: grav
-    build: ./grav/.
-    #image: local.repo.com/grav:latest
+    #build: ./grav/.
+    image: docker.remim.com/grav:latest
     restart: always
     expose:
       - "80"
@@ -202,25 +222,82 @@ services:
       - email
     volumes:
       - ${MY_DOCKER_DATA_DIR}/grav:/var/www/html:cached
-      - ${MY_DOCKER_DATA_DIR}/path-to-favicon.png:/var/www/html/user/themes/quark/images/favicon.png
-      - ${MY_DOCKER_DATA_DIR}/path-to-logo.svg:/var/www/html/user/themes/quark/images/grav-logo.svg
+      - ${MY_DOCKER_DATA_DIR}/nextcloud/data/remi/files/Nettsider/TheAwesomeGarage/garage-web-favicon-new.png:/var/www/html/user/themes/quark/images/favicon.png:ro
+      - ${MY_DOCKER_DATA_DIR}/nextcloud/data/remi/files/Nettsider/TheAwesomeGarage/garage-web-logo-new.svg:/var/www/html/user/themes/quark/images/grav-logo.svg:ro
     labels:
       co.elastic.logs/disable: false
       co.elastic.logs/module: apache
       co.elastic.logs/fileset.stdout: access
       co.elastic.logs/fileset.stderr: error
 
+
+  bondesjakk:
+    container_name: bondesjakk
+    image: node:12
+    restart: always
+    expose:
+      - "3000"
+    environment:
+      - TZ=${DOCKER_TZ}
+      - VIRTUAL_HOST=${BONDESJAKK_DOMAIN}
+      - VIRTUAL_PORT=3000
+      - VIRTUAL_PROTO=http
+      - LETSENCRYPT_HOST=${BONDESJAKK_DOMAIN}
+      - LETSENCRYPT_EMAIL=${NOTIFICATION_EMAIL}
+      - NODE_ENV=production
+    user: "node"
+    working_dir: /home/node/app
+    command: "npm start"
+    networks:
+      - frontend
+    volumes:
+      - ${MY_DOCKER_DATA_DIR}/bondesjakk:/home/node/app
+    labels:
+      co.elastic.logs/disable: false
+      #co.elastic.logs/module: apache
+      #co.elastic.logs/fileset.stdout: access
+      #co.elastic.logs/fileset.stderr: error
+
+  garasjesjakk:
+    container_name: garasjesjakk
+    image: node:12
+    restart: always
+    expose:
+      - "3000"
+    environment:
+      - TZ=${DOCKER_TZ}
+      - VIRTUAL_HOST=${GARASJESJAKK_DOMAIN}
+      - VIRTUAL_PORT=3000
+      - VIRTUAL_PROTO=http
+      - LETSENCRYPT_HOST=${GARASJESJAKK_DOMAIN}
+      - LETSENCRYPT_EMAIL=${NOTIFICATION_EMAIL}
+      - NODE_ENV=production
+    user: "node"
+    working_dir: /home/node/app
+    command: "npm start"
+    networks:
+      - frontend
+    volumes:
+      - ${MY_DOCKER_DATA_DIR}/garasjesjakk:/home/node/app
+      - ${MY_DOCKER_DATA_DIR}/nextcloud/data/remi/files/Nettsider/TheAwesomeGarage/garage-web-favicon-new.png:/home/node/app/public/favicon.png
+    labels:
+      co.elastic.logs/disable: false
+      #co.elastic.logs/module: apache
+      #co.elastic.logs/fileset.stdout: access
+      #co.elastic.logs/fileset.stderr: error
+
+
   nginx:
     container_name: nginx
-    build: ./nginx-vts/.
-    #image: local.repo.com/nginx-vts:latest
+    #build: ./nginx-vts/.
+    image: docker.remim.com/nginx-vts:latest
     restart: always
     environment:
       - TZ=${DOCKER_TZ}
     volumes:
       - nginx-conf:/etc/nginx/conf.d
-      - ${MY_DOCKER_DATA_DIR}/nginx/vhost.d:/etc/nginx/vhost.d
       - ${MY_DOCKER_DATA_DIR}/nginx/nginx.conf:/etc/nginx/nginx.conf
+      - ${MY_DOCKER_DATA_DIR}/nginx/vhost.d:/etc/nginx/vhost.d
       - nginx-html:/usr/share/nginx/html
       - nginx-certs:/etc/nginx/certs:ro
       - nginx-logs:/var/log/nginx
@@ -233,8 +310,8 @@ services:
     networks:
       frontend:
         aliases:
-          - nginx-vts-status  
-    labels:
+          - nginx-vts-status
+    labels: 
       co.elastic.logs/disable: false
       co.elastic.logs/module: nginx
       co.elastic.logs/fileset.stdout: access
@@ -258,6 +335,8 @@ services:
       - nginx
       - nextcloud-web
       - kibana
+      - photoshow
+      - passblt
     entrypoint: /bin/sh -c
     command: ["/usr/local/bin/docker-gen -notify-sighup nginx -watch -wait 30s:60s /etc/docker-gen/templates/nginx.tmpl /etc/nginx/conf.d/default.conf"]
     networks:
@@ -283,7 +362,7 @@ services:
       - NGINX_PROXY_CONTAINER=nginx
       - NGINX_DOCKER_GEN_CONTAINER=nginx-gen
       #- ACME_CA_URI=https://acme-staging.api.letsencrypt.org/directory
-      #- DEBUG=true
+      ##- DEBUG=true
     networks:
       - frontend
     volumes:
@@ -336,6 +415,7 @@ services:
       - /sys:/sys:ro
       - /var/lib/docker/:/var/lib/docker:ro
       - /dev/disk/:/dev/disk:ro
+    command: ["--storage_duration=30m0s"]
     labels:
       co.elastic.logs/disable: false
 
@@ -343,6 +423,8 @@ services:
     privileged: true
     image: kylemanna/openvpn
     container_name: openvpn-server
+    networks:
+      - openvpn
     environment:
       - TZ=${DOCKER_TZ}
     ports:
@@ -363,15 +445,16 @@ services:
       - backend
     environment:
       - CLEANUP=true
-      # In CI/CD environment, use interval in seconds for continuous builds
       #- INTERVAL=30
+      - LOG_LEVEL=debug
       - CRON="0 2 * * *"
       - SELF_UPDATE=true
       #- IGNORE=mongo influxdb postgres mariadb
+      #- IGNORE=nextcloud-app
       - TZ=${DOCKER_TZ}
       - NOTIFIERS="mailtos://${GMAIL_USERNAME}:${GMAIL_PASSWORD}@gmail.com?to=${NOTIFICATION_EMAIL}"
     command: --data-export prometheus --prometheus-addr 0.0.0.0
-    restart: always
+    restart: unless-stopped
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - $HOME/.docker/config.json:/root/.docker/config.json
@@ -453,6 +536,8 @@ services:
     networks:
       - backend
       - frontend
+    ports:
+      - 9913:9913
     environment:
       - TZ=${DOCKER_TZ}
       - NGINX_STATUS=http://nginx-vts-status/status/format/json
@@ -474,11 +559,13 @@ services:
 
   nextcloud-prometheus-exporter:
     container_name: nextcloud-prometheus-exporter
-    build: ./nextcloud-prometheus-exporter/.
-    #image: local.repo.com/nextcloud-prometheus-exporter:latest
+    #build: ./nextcloud-prometheus-exporter/.
+    image: docker.remim.com/nextcloud-prometheus-exporter:latest
     restart: always
     networks:
       - backend
+    depends_on:
+      - nextcloud-web
     environment:
       - TZ=${DOCKER_TZ}
       - NEXTCLOUD_SERVERINFO_URL=https://${NEXTCLOUD_DOMAIN}/ocs/v2.php/apps/serverinfo/api/v1/info
@@ -519,8 +606,8 @@ services:
 
   smtp-relay:
     container_name: smtp-relay
-    build: ./smtp-relay/.
-    #image: local.repo.com/smtp-relay:latest
+    #build: ./smtp-relay/.
+    image: docker.remim.com/smtp-relay:latest
     restart: always
     networks: 
       - email
@@ -587,6 +674,7 @@ services:
     networks:
       - backend
     volumes:
+      - ${MY_DOCKER_DATA_DIR}/filebeat/module/php-fpm:/usr/share/filebeat/module/php-fpm
       - ${MY_DOCKER_DATA_DIR}/filebeat/module/nginx/access/ingest/default.json:/usr/share/filebeat/module/nginx/access/ingest/default.json
       - ${MY_DOCKER_DATA_DIR}/filebeat/module/apache/access/ingest/default.json:/usr/share/filebeat/module/apache/access/ingest/default.json
       - ${MY_DOCKER_DATA_DIR}/filebeat/module/system/syslog/manifest.yml:/usr/share/filebeat/module/system/syslog/manifest.yml
@@ -605,3 +693,123 @@ services:
     labels:
       co.elastic.logs/disable: false
 
+  photoshow:
+    container_name: photoshow
+    image: linuxserver/photoshow
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=Europe/London
+    networks:
+      - frontend
+    environment:
+      - TZ=${DOCKER_TZ}
+      - VIRTUAL_HOST=${PHOTOSHOW_DOMAIN}
+      - VIRTUAL_PORT=80
+      - VIRTUAL_PROTO=http
+      - LETSENCRYPT_HOST=${PHOTOSHOW_DOMAIN}
+      - LETSENCRYPT_EMAIL=${NOTIFICATION_EMAIL}
+    volumes:
+      - photoshow-config:/config
+      - /path/to/photo/archive/:/Pictures/:ro
+      - photoshow-thumbs:/Thumbs
+    restart: unless-stopped
+    labels:
+      co.elastic.logs/disable: false
+
+  passbolt_db:
+    container_name: passbolt_db
+    image: mariadb:10.3
+    volumes:
+      - passbolt_db:/var/lib/mysql
+    networks:
+      - backend
+    environment:
+      - TZ=${DOCKER_TZ}
+      - MYSQL_ROOT_PASSWORD=${PASSBOLT_MYSQL_ROOT_PASSWORD}
+      - MYSQL_DATABASE=${PASSBOLT_MYSQL_DATABASE}
+      - MYSQL_USER=${PASSBOLT_MYSQL_USER}
+      - MYSQL_PASSWORD=${PASSBOLT_MYSQL_PASSWORD}
+
+  passblt:
+    container_name: passblt
+    image: passbolt/passbolt:2.12.0-debian
+    tty: true
+    depends_on:
+      - passbolt_db
+    networks:
+      - frontend
+      - backend
+      - email
+    volumes:
+      - passbolt_gpg:/var/www/passbolt/config/gpg
+      - passbolt_images:/var/www/passbolt/webroot/img/public
+    tmpfs:
+      - /run
+    command: ["/usr/bin/wait-for.sh", "-t", "0", "passbolt_db:3306", "--", "/docker-entrypoint.sh"]
+    environment:
+      - TZ=${DOCKER_TZ}
+      - APP_FULL_BASE_URL=${PASSBOLT_APP_FULL_BASE_URL}
+      - DATASOURCES_DEFAULT_HOST=${PASSBOLT_DATASOURCES_DEFAULT_HOST}
+      - DATASOURCES_DEFAULT_PORT=${PASSBOLT_DATASOURCES_DEFAULT_PORT}      
+      - DATASOURCES_DEFAULT_USERNAME=${PASSBOLT_MYSQL_USER}
+      - DATASOURCES_DEFAULT_PASSWORD=${PASSBOLT_MYSQL_PASSWORD}
+      - DATASOURCES_DEFAULT_DATABASE=${PASSBOLT_MYSQL_DATABASE}
+      - PASSBOLT_REGISTRATION_PUBLIC=${PASSBOLT_REGISTRATION_PUBLIC}
+      - EMAIL_TRANSPORT_DEFAULT_HOST=smtp-relay
+      - EMAIL_TRANSPORT_DEFAULT_PORT=25
+      - EMAIL_DEFAULT_FROM=${NOTIFICATION_EMAIL}
+      - VIRTUAL_HOST=${PASSBOLT_DOMAIN}
+      - VIRTUAL_PORT=80
+      - VIRTUAL_PROTO=http
+      - LETSENCRYPT_HOST=${PASSBOLT_DOMAIN}
+      - LETSENCRYPT_EMAIL=${NOTIFICATION_EMAIL}
+    labels:
+      co.elastic.logs/disable: false
+
+  unifi-controller:
+    image: linuxserver/unifi-controller
+    container_name: unifi-controller
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - MEM_LIMIT=1024M #optional
+    networks:
+      - email
+    volumes:
+      - ${MY_DOCKER_DATA_DIR}/unifi-controller:/config
+    ports:
+      - 3478:3478/udp
+    #  - 10001:10001/udp
+      - 8080:8080
+    #  - 8081:8081
+      - 8443:8443
+    #  - 8843:8843
+    #  - 8880:8880
+    #  - 6789:6789
+    restart: unless-stopped
+
+
+  samba:
+    image: dperson/samba
+    container_name: samba
+    restart: unless-stopped
+    stdin_open: true
+    tty: true
+    environment:
+      TZ: ${DOCKER_TZ}
+      NMBD: "false"
+      USERID: "1000"
+      GROUPID: "1000"
+      SHARE: "sharename;/myshare;yes;no;yes;all;'none';'none';'sharelabel'"
+      RECYCLE: ""
+    ports:
+    #  - "137:137/udp" # required to advertise shares (NMBD)
+    #  - "138:138/udp" # required to advertise shares (NMBD)
+      - "139:139/tcp" # default smb port
+      - "445:445/tcp" # default smb port
+    read_only: false
+    tmpfs:
+      - /tmp
+    volumes:
+      - /local/path/to/shared/files:/myshare:z # :z allows share to be used by multiple containers

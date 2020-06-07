@@ -11,6 +11,7 @@ filebeat.modules:
 - module: mysql
 - module: elasticsearch
 - module: kibana
+- module: php-fpm
 
 filebeat.autodiscover:
   providers:

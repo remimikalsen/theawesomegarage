@@ -1,0 +1,51 @@
+{
+  "description": "Pipeline for parsing PHP-FPM logs. Requires the geoip and user_agent plugins.",
+  "processors": [{
+    "grok": {
+      "field": "message",
+      "patterns":[
+        "%{IPORHOST:source.address} - %{DATA:user.name} %{HTTPDATE:apache.access.time} \"%{WORD:http.request.method} %{DATA:url.original}\" %{NUMBER:http.response.status_code:long}"
+        ],
+      "ignore_missing": true
+    }
+  },{
+    "remove":{
+      "field": "message"
+    }
+  }, {
+    "grok": {
+      "field": "source.address",
+      "ignore_missing": true,
+      "patterns": [
+        "^(%{IP:source.ip}|%{HOSTNAME:source.domain})$"
+      ]
+    }
+  }, {
+    "rename": {
+      "field": "@timestamp",
+      "target_field": "event.created"
+    }
+  }, {
+    "date": {
+      "field": "apache.access.time",
+      "target_field": "@timestamp",
+      "formats": ["dd/MMM/yyyy:H:m:s Z"]
+    }
+  }, {
+    "remove": {
+      "field": "apache.access.time"
+    }
+  }, {
+    "geoip": {
+      "field": "source.ip",
+      "target_field": "source.geo",
+      "ignore_missing": true
+    }
+  }],
+  "on_failure" : [{
+    "set" : {
+      "field" : "error.message",
+      "value" : "{{ _ingest.on_failure_message }}"
+    }
+  }]
+}

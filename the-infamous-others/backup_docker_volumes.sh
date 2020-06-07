@@ -20,10 +20,10 @@
 HOST=home-server
 
 # Who should receive logs by email
-RECIPIENT=remimikalsen@gmail.com
+RECIPIENT=your-email@example.com
 
 # Base dir to which make back-ups 
-BACKUP_DIR=/home/remi/docker-volume-backups
+BACKUP_DIR=/home/user/docker-volume-backups
 
 # Container > Volumes to back up
 declare -A CONTAINER_VOLUMES
