@@ -1,0 +1,212 @@
+#
+# START The below parts are generated for you, don't replace or alter them
+#
+esphome:
+  name: <your-device-name>
+
+esp32:
+  board: esp32dev
+  framework:
+    type: arduino'
+
+ota:
+  password: "a-secret-password"
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+
+  ap:
+    ssid: <your-device-name>
+    password: "another-secret-password"
+
+captive_portal:    
+# 
+# END The above parts are generated for you, don't replace or alter them
+#
+
+# Disable logging (you can still view logs live from ESPHome)
+logger:
+  baud_rate: 0
+
+# Enable Home Assistant API
+api:
+  services:
+    # Creates a Home Assistant service to calibrate CO2-sensor to 400ppm
+    # Calibrate it once in a well ventilated room and you are good
+    - service: mhz19_calibrate_zero
+      then:
+        - mhz19.calibrate_zero: mhz19_<name>
+    # Creates a Home Assistant service to play a RTTTL-tune
+    # Try passing the following two examples as song_str to the Home Assistant service: 
+    #   two short:d=4,o=5,b=100:16e6,16e6
+    #   starwars:d=4,o=5,b=180:8f,8f,8f,2a#.,2f.6,8d#6,8d6,8c6,2a#.6,f.6,8d#6,8d6,8c6,2a#.6,f.6,8d#6,8d6,8d#6,2c6,p,8f,8f,8f,2a#.,2f.6,8d#6,8d6,8c6,2a#.6,f.6,8d#6,8d6,8c6,2a#.6,f.6,8d#6,8d6,8d#6,2c6
+    #   (including the name of the tune, e.g. "two short" and "starwars")
+    - service: play_rtttl
+      variables:
+        song_str: string
+      then:
+        - rtttl.play:
+            rtttl: !lambda 'return song_str;'
+
+# Buzzer
+output:
+  - platform: ledc
+    pin: GPIO22 
+    id: rtttl_out
+
+rtttl:
+  output: rtttl_out
+  on_finished_playback:
+  - logger.log: 'Song ended!'
+
+# CO2 sensor comms
+# For this to work you may have to set logger baud_rate to 0
+uart:
+  - id: co2
+    rx_pin: 3
+    tx_pin: 1
+    baud_rate: 9600
+
+# Light sensor comms
+i2c:
+  - id: light
+    sda: 18
+    scl: 19
+    scan: true    
+
+sensor:
+  # Sound sensor
+  - platform: adc
+    id: adc_lyd_<name>
+    pin: 33
+    name: "Sound sensor voltage <name>"
+    update_interval: 100ms
+    attenuation: auto
+    # Don't send sound sensor readings to HA
+    internal: true
+  # Sound level measurement based upon sound sensor
+  - platform: ct_clamp
+    sensor: adc_lyd_<name>
+    name: "Sound sensor level <name>"
+    # Lower sample duration gives less reliable readings
+    sample_duration: 500ms
+    update_interval: 500ms
+    filters:
+      # Consider everything below threshold to be zero
+      # You may adjust threshold and delta to your liking
+      - lambda: |-
+          float THRESHOLD = 0.5;
+          if (x < THRESHOLD) {
+            return 0;
+          } else {
+            return x;
+          }
+      # When above threshold, only send results when more than "delta" difference since last time
+      # This reduces the amount of data sent to HA so your log doesn't fill up
+      - delta: 0.05
+  # CO2 sensor (depends on uart-config)
+  # Remove or comment out if you use the alternative design
+  - platform: mhz19
+    id: mhz19_<name>
+    uart_id: co2
+    co2:
+      name: "CO2 <name>"
+      filters:
+        - delta: 10.0
+    temperature:
+      name: "Temperature <name> (internal)"
+      filters:
+        - delta: 0.5
+      # Hide this value from  Home Assistant
+      # The MH-Z19 temperature readings are notoriously inaccurate
+      internal: true
+    # This sensor will report every 10 seconds, but only if the change is bigger than delta
+    update_interval: 10s
+    # Calibrate sensor manually through the exposed service further up
+    automatic_baseline_calibration: false
+  # Light sensor (depends on i2c-config)
+  # Remove if you use the alternative design
+  - platform: tsl2591
+    i2c_id: light
+    name: "Light <name>"
+    id: light_<name>
+    address: 0x29
+    update_interval: 2s
+    # Used to calculate/calibrate Lux
+    device_factor: 53
+    # Used to calculate/calibrate Lux
+    glass_attenuation_factor: 7.7
+    # Lower sample durataion gives less reliable readings
+    integration_time: 600ms
+    # It works really badly without gain set to auto
+    # High gain is useful at night
+    # Low gain is useful at day
+    # On Low, the sensor will always show -1 in bright daylight
+    # On auto, calculated Lux will go to -1 when the sensor is over or under saturated
+    # but it will change gain automataically, and the next reading will be sensible
+    gain: auto
+    visible:
+      name: "Visible light <name>"
+      internal: true
+    infrared:
+      name: "Infrared light <name>"
+      internal: false
+      filters: 
+        - delta: 10.0      
+    full_spectrum:
+      name: "Full spectrum light <name>"
+      internal: true
+    calculated_lux:
+      id: i_lux
+      accuracy_decimals: 0
+      name: "Lux <name>"
+      filters: 
+        # Don't bother sending result if Lux is below zero
+        # This will make the stats from the sensor nicer and you avoid having sudden -1 when changing gains
+        - lambda: |-
+            float MIN = 0.0;
+            if (MIN <= x) return x;
+            else return {};
+        - delta: 10.0
+  # START alternative light sensor
+  # Light sensor for the alternative design
+  # Uncomment if you use the alternative design
+  #- platform: adc
+  #  pin: A0
+  #  name: "Illuminance <name>"
+  #  device_class: illuminance
+  #  unit_of_measurement: lx
+    # Without this, you can't measure the full range of lux this unit is capable of
+  #  attenuation: auto
+  #  filters:
+      # Conversion formula to Lux
+      # https://esphome.io/cookbook/temt6000.html
+  #    - lambda: |-
+  #        return (x / 10000.0) * 2000000.0;
+  #    - delta: 10.0
+  # END alternative light sensor
+  # Temperature and relative humidity sensor
+  - platform: dht
+    model: DHT22
+    pin: GPIO32
+    temperature:
+      name: "Temperature <name>"
+      filters:
+        # Because the temperature sensor is partly within an enclosure with othe electronics, the measured 
+        # temperature will be higher than the real room temperature. Monitor real temperature and set an 
+        # offset to calibrate the temperature correctly
+        - offset: -6
+        - delta: 0.5        
+    humidity:
+      name: "Relative humidity <name>"
+      filters:
+        - delta: 1.0
+    update_interval: 10s
+
+# Motion sensor
+binary_sensor:
+  - platform: gpio
+    pin: GPIO27
+    name: "Motion <name>"
+    device_class: motion          
