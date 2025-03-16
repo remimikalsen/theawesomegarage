@@ -1,5 +1,8 @@
 # Installation of a dockerized home network application stack
 
+> This is ancient! Use with caution!
+
+
 ## Installation of base packages
 
 ### Install Docker
